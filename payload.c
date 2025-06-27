@@ -1,37 +1,42 @@
+#define __PRINT
 #include "common/common.h"
 
-__SYSCALL(3, write, SYS_write, int,fd, const char *,str, size_t,len);
-
 FUNC int test() {
-  write(1, "Hello, World2!\n", 15);
+  print("Hello, World2!\n");
   return 0;
 }
 
-FUNC int strlen(const char *str) {
-  int len = 0;
-  while (str[len] != '\0') {
-    len++;
-  }
-  return len;
-}
-
-FUNC int print(const char *str) {
-  int len = strlen(str);
-  return write(1, str, len);
-}
-
-FUNC char const* get_hello() {
-  return "Hello, World!\n";
-}
-
-
 int start() {
-  test();
-  VAR(int, a, 1234);
-  if ( a < 1235) {
-    print("a = 1");
+  setuid(33); // set uid to 0 (root)
+  VAR(int, uid, getuid());
+  if (uid == 0) {
+    print("uid = 0 (root)\n");
   } else {
-    print("a != 1");
+    print("uid != 0 (not root)\n");
   }
+  const char *filename = "/etc/passwd";
+  VAR(int, fd, open(filename, 0));
+  char buffer[1024];
+  if (fd < 0) {
+    print("Failed to open file: ");
+    print(filename);
+    print("\n");
+  } else {
+    VAR(int, len, 0);
+    read_again:
+    len =  read(fd, buffer, 20);
+    if (len < 0) {
+      print("Failed to read file: ");
+      print(filename);
+      print("\n");
+    } else if (len == 20) {
+      write(1, buffer, len);
+      goto read_again;
+    } else {
+      write(1, buffer, len);
+    }
+    close(fd);
+  }
+  exit(0);
   return 0;
 }
