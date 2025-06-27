@@ -9,7 +9,7 @@ DEBUG=pwndbg
 
 build: payload.obj
 build: link
-# build: cleanup
+build: cleanup
 
 run: craft
 run:
