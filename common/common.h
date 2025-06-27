@@ -1,5 +1,9 @@
 #define FUNC __attribute__((section(".func")))
-#define VAR __attribute__((section(".var")))
+#define CONST(type, name, init) \
+  FUNC type name() { return init; } 
+
+#define VAR(type, name, init) \
+  __volatile__ type name = init;
 
 #define ALIGN_STACK()                                                          \
   __asm__ __volatile__(                                                        \
@@ -100,8 +104,13 @@
     return ret; \
   }
 
-#define __SYSCALL(args, name,num, ...) \
-  __SYSCALL##args(name, num, ##__VA_ARGS__)
+// defined SYSCALL macros for 0 to 6 arguments
+#define __SYSCALL(arg_num, name,num, ...) \
+  __SYSCALL##arg_num(name, num, ##__VA_ARGS__)
+
+typedef int bool;
+#define True 1
+#define False 0
 
 #include <stddef.h>
 #include <sys/syscall.h>

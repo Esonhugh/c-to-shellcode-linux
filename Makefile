@@ -4,12 +4,12 @@ CC=gcc
 CFLAGS=-Os -fPIC -nostdlib -nostartfiles -ffreestanding -fno-asynchronous-unwind-tables -fno-ident -s -e start
 
 
-DEBUG=gdb
-# DEBUG=pwndbg
+#DEBUG=gdb
+DEBUG=pwndbg
 
 build: payload.obj
 build: link
-build: cleanup
+# build: cleanup
 
 run: craft
 run:
@@ -40,3 +40,5 @@ craft:
 	gcc ./runner.c -o runner
 	rm ./runner.c
 
+install-pwndbg:
+	curl -qsL 'https://install.pwndbg.re' | sh -s -- -t pwndbg-gdb

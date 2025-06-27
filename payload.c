@@ -26,6 +26,12 @@ FUNC char const* get_hello() {
 
 
 int start() {
-  print(get_hello());
+  test();
+  VAR(int, a, 1234);
+  if ( a < 1235) {
+    print("a = 1");
+  } else {
+    print("a != 1");
+  }
   return 0;
 }

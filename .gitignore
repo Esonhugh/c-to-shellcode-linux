@@ -3,3 +3,4 @@ payload.bin
 payload.o
 runner.c
 runner
+.gdb_history

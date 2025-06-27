@@ -5,4 +5,7 @@ file ./runner
 b *(&main+66)
 r
 # step into shellcode payload
-si 
+si
+
+## shellcode disassemble
+disassemble

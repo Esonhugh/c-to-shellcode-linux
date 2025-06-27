@@ -6,6 +6,5 @@ SECTIONS {
     . = BASE; 
     *(.text);
     *(.func);
-    *(.var);
   }
 }
