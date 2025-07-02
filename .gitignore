@@ -4,3 +4,4 @@ payload.o
 runner.c
 runner
 .gdb_history
+common/add-symbol-command.gdb

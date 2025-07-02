@@ -12,7 +12,8 @@ CFLAGS += -nostartfiles # This is for not linking standard startup files
 CFLAGS += -ffreestanding # This is for not linking standard libraries
 CFLAGS += -fno-asynchronous-unwind-tables # This is for not generating unwind
 CFLAGS += -fno-ident # This is for not generating identification
-CFLAGS += -s # This is for stripping symbols
+#CFLAGS += -s # This is for stripping symbols
+CFLAGS += -ggdb3
 CFLAGS += -e start # This is for setting the entry point to 'start'
 
 
@@ -31,21 +32,26 @@ run:
 
 # run the payload but run with debugger
 debug: craft
+debug: add-symbol-command
 debug:
 	$(DEBUG) ./runner
 
 # clear everthing generated
 clean:
-	rm -f payload.o core payload.bin .gdb_history runner
+	rm -f payload.o core payload.bin .gdb_history runner ./common/add-symbol-command.gdb
 
 payload.obj:
 	$(CC) -c $(PAYLOAD) -o payload.o $(CFLAGS)
 
 link:
-	ld -T common/linker.ld payload.o -o payload.bin
+	ld -T common/linker.ld -e start payload.o --oformat binary -o payload.bin
+
+add-symbol-command:
+	@bash ./common/add-symbol-command
+	bash ./common/add-symbol-command > ./common/add-symbol-command.gdb
 
 cleanup:
-	rm -f payload.o core .gdb_history runner
+	rm -f core .gdb_history runner
 
 craft:
 	python3 ./common/craft.py > runner.c

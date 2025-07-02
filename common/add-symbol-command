@@ -1,0 +1,4 @@
+TEXT_SIZE=$(size -A -d payload.o|grep .text | awk '{print $2}') 
+FUNC_SIZE=$(size -A -d payload.o|grep .func | awk '{print $2}')
+
+echo add-symbol-file ./payload.o -s .text '$rdx' -s .func '$rdx'+${TEXT_SIZE} -s .rodata.str1.1 '$rdx'+${TEXT_SIZE}+${FUNC_SIZE} -readnow
