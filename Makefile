@@ -2,6 +2,7 @@ PAYLOAD=payload.c
 
 CC=gcc
 CFLAGS=-Os -fPIC -nostdlib -nostartfiles -ffreestanding -fno-asynchronous-unwind-tables -fno-ident -s -e start
+CFLAGS=-Os -fPIC -pie -nostdlib -nostartfiles -ffreestanding -fno-asynchronous-unwind-tables -fno-ident -s -e start
 
 
 #DEBUG=gdb

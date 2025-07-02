@@ -1,6 +1,8 @@
 # b main
 # b *(void ()())(PAYLOAD)
 file ./runner
+# print PAYLOAD
+# print *(void ()())(PAYLOAD)
 # break point at payload init point
 b *(&main+66)
 r
@@ -8,4 +10,4 @@ r
 si
 
 ## shellcode disassemble
-disassemble
+# disassemble

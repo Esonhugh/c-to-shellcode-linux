@@ -1,6 +1,7 @@
 #include "syscalls.h"
 
 #define FUNC __attribute__((section(".func")))
+#define INLINE __attribute__((always_inline)) inline
 #define CONST(type, name, init) \
   FUNC type name() { return init; } 
 
@@ -25,6 +26,39 @@ typedef int bool;
 #define True 1
 #define False 0
 
+#ifndef no_memset
+FUNC void* memset(void* b, int c, size_t len) {
+    char* p = (char*)b;
+    for (size_t i = 0; i != len; ++i) {
+        p[i] = c;
+    }
+    return b;
+}
+
+FUNC void* memcpy(void* dest, const void* src, size_t len) {
+    char* d = (char*)dest;
+    const char* s = (const char*)src;
+    for (size_t i = 0; i != len; ++i) {
+        d[i] = s[i];
+    }
+    return dest;
+}
+#endif
+
+#ifndef no_get_rip
+FUNC long get_rip() {
+  void* location;
+  __asm__ __volatile__(
+      "mov %%rsp, %0;" // Move stack pointer to location
+      : "=r"(location)  // Output operand
+      :                  // No input operands
+      :                  // No clobbered registers
+  );
+  return *((long*)location);
+}
+
+#endif
+
 #ifdef __PRINT
 
 FUNC int strlen(const char *str) {
@@ -41,6 +75,3 @@ FUNC int print(const char *str) {
 }
 
 #endif
-
-
-

