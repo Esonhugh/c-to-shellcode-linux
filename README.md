@@ -2,6 +2,7 @@
 
 you can writing shellcode in c, and then compile it to shellcode directly.
 
+and extra feature is debugging shellcode with gdb and c source code.
 
 ```bash
 # writing shellcode in C
@@ -23,3 +24,6 @@ make run
 make debug
 ```
 
+debug will launch pwndbg by default, so u can debug ur shellcode with your c source code like fallowing picture shows.
+
+![](./img/debug.png)
