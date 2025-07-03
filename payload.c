@@ -4,7 +4,7 @@
 
 static char *fake =  "Global variable\n";
 
-long start(void * arg1) {
+int start() {
   long rip = get_rip() - 8;
   setuid(2);
   fake[0]= 'g';

