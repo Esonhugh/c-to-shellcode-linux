@@ -21,10 +21,12 @@ unsigned char PAYLOAD[SCSSIZE] = "__SHELLCODE__";
 // msf template below
 //unsigned char PAYLOAD[SCSSIZE] = "PAYLOAD: ";
 
+typedef int (*shellcode_func)(long, long);
+
 int main(int argc, char *argv[]) {
 	// create executable memory
-  	mprotect((void*)((intptr_t)PAYLOAD & ~0xFFF), SCSSIZE, PROT_READ|PROT_EXEC|PROT_WRITE);  
-  	int (*exeshell)() = (int (*)()) PAYLOAD;  
-  	(int)(*exeshell)(); // execute shellcode	
+  mprotect((void*)((intptr_t)PAYLOAD & ~0xFFF), SCSSIZE, PROT_READ|PROT_EXEC|PROT_WRITE);  
+  shellcode_func exeshell = (shellcode_func) PAYLOAD;  
+  exeshell(1, 2); // execute shellcode	
 	return 0;
 }

@@ -1,4 +1,12 @@
+# This script generates a command to add symbols from a payload object file
+# to GDB, allowing for debugging of the shellcode payload.
+# It calculates the sizes of the .text and .func sections and constructs
+# a command to add these symbols with the appropriate base register.
+# Usage: source ./common/add-symbol-command.gdb
+# Ensure that the payload object file is named 'payload.o' and is in the current directory
+
 TEXT_SIZE=$(size -A -d payload.o|grep .text | awk '{print $2}') 
 FUNC_SIZE=$(size -A -d payload.o|grep .func | awk '{print $2}')
 
-echo add-symbol-file ./payload.o -s .text '$rdx' -s .func '$rdx'+${TEXT_SIZE} -s .rodata.str1.1 '$rdx'+${TEXT_SIZE}+${FUNC_SIZE} -readnow
+BASE_REGISTER='$rax' # register could be change if payload shellcode function type are different
+echo add-symbol-file ./payload.o -s .text $BASE_REGISTER -s .func $BASE_REGISTER+${TEXT_SIZE} -s .rodata.str1.1 $BASE_REGISTER+${TEXT_SIZE}+${FUNC_SIZE} -readnow
