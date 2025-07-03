@@ -57,6 +57,8 @@ craft:
 	python3 ./common/craft.py > runner.c
 	gcc ./runner.c -o runner
 	rm ./runner.c
+	# this is important to strip symbols from runner main
+	objcopy -N PAYLOAD -N __dso_handle -N data_start -N __data_start ./runner
 
 install-pwndbg:
 	curl -qsL 'https://install.pwndbg.re' | sh -s -- -t pwndbg-gdb

