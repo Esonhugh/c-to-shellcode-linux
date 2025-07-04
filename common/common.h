@@ -70,8 +70,11 @@ FUNC int strlen(const char *str) {
 }
 
 FUNC int print(const char *str) {
-  int len = strlen(str);
-  return write(1, str, len);
+  return write(1, str, strlen(str));
+}
+
+FUNC int fprint(int fd, const char *str) {
+  return write(fd, str, strlen(str));
 }
 
 #endif

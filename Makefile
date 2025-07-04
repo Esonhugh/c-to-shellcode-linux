@@ -23,6 +23,8 @@ DEBUG=pwndbg
 # build binary payload.bin from payload.c
 build: payload.obj
 build: link
+build:
+	wc -c payload.bin
 build: cleanup
 
 # run the payload with a custom loader 

@@ -4,6 +4,11 @@
     "syscall.h": "c",
     "unistd.h": "c",
     "unistd_64.h": "c",
-    "stddef.h": "c"
+    "stddef.h": "c",
+    "fcntl.h": "c",
+    "fcntl-linux.h": "c",
+    "common.h": "c",
+    "stdio.h": "c",
+    "mojoelf.h": "c"
   }
 }
