@@ -12,5 +12,6 @@ si
 # add-symbol-file 
 source ./common/add-symbol-command.gdb
 
+b MOJOELF_dlopen_mem
 ## shellcode disassemble
 # disassemble

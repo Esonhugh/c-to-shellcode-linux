@@ -3,10 +3,10 @@
 #include <stddef.h>
 
 // 基础宏（0个参数）
-#define __SYSCALL0(name, num)                       \
-  static inline long name(void)                     \
+#define __SYSCALL0(name, num, ret_t)                \
+  static inline ret_t name(void)                    \
   {                                                 \
-    long ret;                                       \
+    ret_t ret;                                      \
     __asm__ __volatile__("syscall"                  \
                          : "=a"(ret)                \
                          : "0"((long)(num))         \
@@ -15,10 +15,10 @@
   }
 
 // 1个参数
-#define __SYSCALL1(name, num, type1, arg1)                     \
-  static inline long name(type1 arg1)                          \
+#define __SYSCALL1(name, num, type1, arg1, ret_t)              \
+  static inline ret_t name(type1 arg1)                         \
   {                                                            \
-    long ret;                                                  \
+    ret_t ret;                                                 \
     __asm__ __volatile__("syscall"                             \
                          : "=a"(ret)                           \
                          : "0"((long)(num)), "D"((long)(arg1)) \
@@ -27,10 +27,10 @@
   }
 
 // 2个参数
-#define __SYSCALL2(name, num, type1, arg1, type2, arg2)                           \
-  static inline long name(type1 arg1, type2 arg2)                                 \
+#define __SYSCALL2(name, num, type1, arg1, type2, arg2, ret_t)                    \
+  static inline ret_t name(type1 arg1, type2 arg2)                                \
   {                                                                               \
-    long ret;                                                                     \
+    ret_t ret;                                                                    \
     __asm__ __volatile__("syscall"                                                \
                          : "=a"(ret)                                              \
                          : "0"((long)(num)), "D"((long)(arg1)), "S"((long)(arg2)) \
@@ -39,10 +39,10 @@
   }
 
 // 3个参数
-#define __SYSCALL3(name, num, type1, arg1, type2, arg2, type3, arg3)                                 \
-  static inline long name(type1 arg1, type2 arg2, type3 arg3)                                        \
+#define __SYSCALL3(name, num, type1, arg1, type2, arg2, type3, arg3, ret_t)                          \
+  static inline ret_t name(type1 arg1, type2 arg2, type3 arg3)                                       \
   {                                                                                                  \
-    long ret;                                                                                        \
+    ret_t ret;                                                                                       \
     __asm__ __volatile__("syscall"                                                                   \
                          : "=a"(ret)                                                                 \
                          : "0"((long)(num)), "D"((long)(arg1)), "S"((long)(arg2)), "d"((long)(arg3)) \
@@ -51,10 +51,10 @@
   }
 
 // 4个参数（使用r10寄存器）
-#define __SYSCALL4(name, num, type1, arg1, type2, arg2, type3, arg3, type4, arg4)                               \
-  static inline long name(type1 arg1, type2 arg2, type3 arg3, type4 arg4)                                       \
+#define __SYSCALL4(name, num, type1, arg1, type2, arg2, type3, arg3, type4, arg4, ret_t)                        \
+  static inline ret_t name(type1 arg1, type2 arg2, type3 arg3, type4 arg4)                                      \
   {                                                                                                             \
-    long ret;                                                                                                   \
+    ret_t ret;                                                                                                  \
     register long _r10 __asm__("r10") = (long)(arg4);                                                           \
     __asm__ __volatile__("syscall"                                                                              \
                          : "=a"(ret)                                                                            \
@@ -64,10 +64,10 @@
   }
 
 // 5个参数（使用r10和r8寄存器）
-#define __SYSCALL5(name, num, type1, arg1, type2, arg2, type3, arg3, type4, arg4, type5, arg5)                            \
-  static inline long name(type1 arg1, type2 arg2, type3 arg3, type4 arg4, type5 arg5)                                     \
+#define __SYSCALL5(name, num, type1, arg1, type2, arg2, type3, arg3, type4, arg4, type5, arg5, ret_t)                     \
+  static inline ret_t name(type1 arg1, type2 arg2, type3 arg3, type4 arg4, type5 arg5)                                    \
   {                                                                                                                       \
-    long ret;                                                                                                             \
+    ret_t ret;                                                                                                            \
     register long _r10 __asm__("r10") = (long)(arg4);                                                                     \
     register long _r8 __asm__("r8") = (long)(arg5);                                                                       \
     __asm__ __volatile__("syscall"                                                                                        \
@@ -78,10 +78,10 @@
   }
 
 // 6个参数（使用r10、r8和r9寄存器）
-#define __SYSCALL6(name, num, type1, arg1, type2, arg2, type3, arg3, type4, arg4, type5, arg5, type6, arg6)                         \
-  static inline long name(type1 arg1, type2 arg2, type3 arg3, type4 arg4, type5 arg5, type6 arg6)                                   \
+#define __SYSCALL6(name, num, type1, arg1, type2, arg2, type3, arg3, type4, arg4, type5, arg5, type6, arg6, ret_t)                  \
+  static inline ret_t name(type1 arg1, type2 arg2, type3 arg3, type4 arg4, type5 arg5, type6 arg6)                                  \
   {                                                                                                                                 \
-    long ret;                                                                                                                       \
+    ret_t ret;                                                                                                                      \
     register long _r10 __asm__("r10") = (long)(arg4);                                                                               \
     register long _r8 __asm__("r8") = (long)(arg5);                                                                                 \
     register long _r9 __asm__("r9") = (long)(arg6);                                                                                 \
@@ -93,15 +93,30 @@
   }
 
 // defined SYSCALL macros for 0 to 6 arguments
-#define __SYSCALL(arg_num, name, num, ...) \
-  __SYSCALL##arg_num(name, num, ##__VA_ARGS__)
+#define __SYSCALL(arg_num, ret_t, name, num, ...) \
+  __SYSCALL##arg_num(name, num, ##__VA_ARGS__, ret_t)
 
-__SYSCALL(3, mprotect, SYS_mprotect, void *, addr, size_t, len, int, prot);
-__SYSCALL(3, write, SYS_write, int, fd, const char *, str, size_t, len);
-__SYSCALL(3, read, SYS_read, int, fd, char *, buf, size_t, count);
-__SYSCALL(1, exit, SYS_exit, int, status);
-__SYSCALL(1, setuid, SYS_setuid, int, uid);
-__SYSCALL(0, getuid, SYS_getuid);
-__SYSCALL(0, getpid, SYS_getpid);
-__SYSCALL(2, open, SYS_open, const char *, filename, int, oflags);
-__SYSCALL(1, close, SYS_close, int, fd);
+// int mprotect(void addr[.size], size_t size, int prot);
+__SYSCALL(3, int, mprotect, SYS_mprotect, void *, addr, size_t, len, int, prot);
+// ssize_t write(int fd, const char *str, size_t len);
+__SYSCALL(3, long, write, SYS_write, int, fd, const char *, str, size_t, len);
+//  ssize_t read(int fd, void buf[.count], size_t count);
+__SYSCALL(3, long, read, SYS_read, int, fd, char *, buf, size_t, count);
+// void exit(int status);
+__SYSCALL(1, long, exit, SYS_exit, int, status); // never returns
+// int setuid(uid_t uid);
+__SYSCALL(1, int, setuid, SYS_setuid, unsigned int, uid);
+// uid_t getuid(void);
+__SYSCALL(0, unsigned int, getuid, SYS_getuid);
+//  pid_t getpid(void);
+__SYSCALL(0, int, getpid, SYS_getpid);
+// int open(const char *pathname, int flags, .../* mode_t mode */ );
+__SYSCALL(2, int, open, SYS_open, const char *, filename, int, oflags);
+// int close(int fd);
+__SYSCALL(1, int, close, SYS_close, int, fd);
+// int brk(void *addr);
+__SYSCALL(1, int, brk, SYS_brk, void *, addr);
+
+// void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
+typedef long int off_t;
+__SYSCALL(6, void *, mmap, SYS_mmap, void *, addr, size_t, length, int, prot, int, flags, int, fd, off_t, offset);

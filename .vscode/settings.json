@@ -9,6 +9,7 @@
     "fcntl-linux.h": "c",
     "common.h": "c",
     "stdio.h": "c",
-    "mojoelf.h": "c"
+    "mojoelf.h": "c",
+    "stat.h": "c"
   }
 }

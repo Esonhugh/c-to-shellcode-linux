@@ -18,18 +18,19 @@
 #include <sys/mman.h>
 #include <dlfcn.h>
 */
-
+#define __PRINT
+#include "../common/common.h"
 #include "mojoelf.h"
 
 // ELF specifications: http://refspecs.freestandards.org/elf/
 
 // If not defined, force to current x86/x86_64 Linux OSABI and version.
 #ifndef MOJOELF_OSABI
-#define MOJOELF_OSABI 0  // x86 Linux uses ELFOSABI_SYSV, not ELFOSABI_LINUX!
+#define MOJOELF_OSABI 0 // x86 Linux uses ELFOSABI_SYSV, not ELFOSABI_LINUX!
 #endif
 
 #ifndef MOJOELF_ALT_OSABI
-#define MOJOELF_ALT_OSABI 3  // ...but some binaries _do_ use ELFOSABI_LINUX.
+#define MOJOELF_ALT_OSABI 3 // ...but some binaries _do_ use ELFOSABI_LINUX.
 #endif
 
 #ifndef MOJOELF_OSABIVERSION
@@ -58,10 +59,15 @@
 #endif
 
 #if 1
-#define dbgprintf(x) do {} while (0)
+#define dbgprintf(x) \
+    do               \
+    {                \
+    } while (0)
 #else
 #define dbgprintf(x) printf x
 #endif
+
+#include <stdint.h>
 
 typedef intptr_t intptr;
 typedef uint8_t uint8;
@@ -71,76 +77,78 @@ typedef uint64_t uint64;
 typedef uintptr_t uintptr;
 
 #if defined(__i386__)
-    #define MOJOELF_MACHINE_TYPE 3   // EM_386
-    #define MOJOELF_32BIT 1
-    #define MOJOELF_64BIT 0
-    #define MOJOELF_LSB 1
-    #define MOJOELF_MSB 0
+#define MOJOELF_MACHINE_TYPE 3 // EM_386
+#define MOJOELF_32BIT 1
+#define MOJOELF_64BIT 0
+#define MOJOELF_LSB 1
+#define MOJOELF_MSB 0
 #elif defined(__x86_64__)
-    #define MOJOELF_MACHINE_TYPE 62  // EM_AMD64 (aka: EM_X86_64)
-    #define MOJOELF_32BIT 0
-    #define MOJOELF_64BIT 1
-    #define MOJOELF_LSB 1
-    #define MOJOELF_MSB 0
+#define MOJOELF_MACHINE_TYPE 62 // EM_AMD64 (aka: EM_X86_64)
+#define MOJOELF_32BIT 0
+#define MOJOELF_64BIT 1
+#define MOJOELF_LSB 1
+#define MOJOELF_MSB 0
 #else
-    #error Please define your platform.
+#error Please define your platform.
 #endif
 
 #if ((MOJOELF_LSB + MOJOELF_MSB) != 1)
-    #error Your platform byteorder is defined incorrectly.
+#error Your platform byteorder is defined incorrectly.
 #endif
 
 #if MOJOELF_LSB
-    #define MOJOELF_ELFDATA 1  // ELFDATA2LSB
+#define MOJOELF_ELFDATA 1 // ELFDATA2LSB
 #elif MOJOELF_MSB
-    #define MOJOELF_ELFDATA 2  // ELFDATA2MSB
+#define MOJOELF_ELFDATA 2 // ELFDATA2MSB
 #else
-    #error Please define your platform.
+#error Please define your platform.
 #endif
 
 #if ((MOJOELF_32BIT + MOJOELF_64BIT) != 1)
-    #error Your platform wordsize is defined incorrectly.
+#error Your platform wordsize is defined incorrectly.
 #endif
 
 #if MOJOELF_32BIT
-    #define MOJOELF_PAGESIZE 4096
-    #define MOJOELF_ELFCLASS 1  // ELFCLASS32
-    #define MOJOELF_SIZEOF_ELF_HEADER 52
-    #define MOJOELF_SIZEOF_PROGRAM_HEADER 32
-    #define MOJOELF_SIZEOF_SECTION_HEADER 40
-    #define MOJOELF_SIZEOF_RELENT 8
-    #define MOJOELF_SIZEOF_RELAENT 12
-    #define MOJOELF_SIZEOF_SYMENT 16
-    #define ELF_R_SYM(x) (uint32) ((x) >> 8)
-    #define ELF_R_TYPE(x) (uint32) ((x) & 0xFF)
+#define MOJOELF_PAGESIZE 4096
+#define MOJOELF_ELFCLASS 1 // ELFCLASS32
+#define MOJOELF_SIZEOF_ELF_HEADER 52
+#define MOJOELF_SIZEOF_PROGRAM_HEADER 32
+#define MOJOELF_SIZEOF_SECTION_HEADER 40
+#define MOJOELF_SIZEOF_RELENT 8
+#define MOJOELF_SIZEOF_RELAENT 12
+#define MOJOELF_SIZEOF_SYMENT 16
+#define ELF_R_SYM(x) (uint32)((x) >> 8)
+#define ELF_R_TYPE(x) (uint32)((x) & 0xFF)
 #elif MOJOELF_64BIT
-    #define MOJOELF_PAGESIZE 4096
-    #define MOJOELF_ELFCLASS 2  // ELFCLASS64
-    #define MOJOELF_SIZEOF_ELF_HEADER 64
-    #define MOJOELF_SIZEOF_PROGRAM_HEADER 56
-    #define MOJOELF_SIZEOF_SECTION_HEADER 64
-    #define MOJOELF_SIZEOF_RELENT 16
-    #define MOJOELF_SIZEOF_RELAENT 24
-    #define MOJOELF_SIZEOF_SYMENT 24
-    #define ELF_R_SYM(i) ((uint32) ((i) >> 32))
-    #define ELF_R_TYPE(i) ((uint32) ((i) & 0xFFFFFFFF))
+#define MOJOELF_PAGESIZE 4096
+#define MOJOELF_ELFCLASS 2 // ELFCLASS64
+#define MOJOELF_SIZEOF_ELF_HEADER 64
+#define MOJOELF_SIZEOF_PROGRAM_HEADER 56
+#define MOJOELF_SIZEOF_SECTION_HEADER 64
+#define MOJOELF_SIZEOF_RELENT 16
+#define MOJOELF_SIZEOF_RELAENT 24
+#define MOJOELF_SIZEOF_SYMENT 24
+#define ELF_R_SYM(i) ((uint32)((i) >> 32))
+#define ELF_R_TYPE(i) ((uint32)((i) & 0xFFFFFFFF))
 #else
-    #error Please define your platform.
+#error Please define your platform.
 #endif
 
-
 #if MOJOELF_SUPPORT_DLERROR
-    #define set_dlerror(x) do {} while (0)
+#define set_dlerror(x) \
+    do                 \
+    {                  \
+    } while (0)
 #else
-    static const char *dlerror_msg = NULL;
-    static inline void set_dlerror(const char *msg) { dlerror_msg = msg; }
+static const char *dlerror_msg = NULL;
+static inline void set_dlerror(const char *msg) { dlerror_msg = msg; }
 
-    const char *MOJOELF_dlerror(void)
-    {
-        const char *retval = dlerror_msg;
-        dlerror_msg = NULL;
-        return retval;
-    } // MOJOELF_dlerror
+const char *MOJOELF_dlerror(void)
+{
+    const char *retval = dlerror_msg;
+    dlerror_msg = NULL;
+    return retval;
+} // MOJOELF_dlerror
 #endif
 
 // The usual ELF defines from the spec...
@@ -213,17 +221,17 @@ typedef struct ElfHeader
 typedef struct ElfProgram
 {
     uint32 p_type;
-    #if MOJOELF_64BIT  // 64-bit ABI moved it here for alignment purposes. :/
+#if MOJOELF_64BIT // 64-bit ABI moved it here for alignment purposes. :/
     uint32 p_flags;
-    #endif
+#endif
     uintptr p_offset;
     uintptr p_vaddr;
     uintptr p_paddr;
     uintptr p_filesz;
     uintptr p_memsz;
-    #if MOJOELF_32BIT
+#if MOJOELF_32BIT
     uint32 p_flags;
-    #endif
+#endif
     uintptr p_align;
 } ElfProgram;
 
@@ -244,18 +252,18 @@ typedef struct ElfSection
 typedef struct ElfSymTable
 {
     uint32 st_name;
-    #if MOJOELF_64BIT  // 64-bit ABI moved it here for alignment purposes. :/
+#if MOJOELF_64BIT // 64-bit ABI moved it here for alignment purposes. :/
     uint8 st_info;
     uint8 st_other;
     uint16 st_shndx;
-    #endif
+#endif
     uintptr st_value;
     uintptr st_size;
-    #if MOJOELF_32BIT
+#if MOJOELF_32BIT
     uint8 st_info;
     uint8 st_other;
     uint16 st_shndx;
-    #endif
+#endif
 } ElfSymTable;
 
 typedef struct ElfRel
@@ -277,7 +285,7 @@ typedef struct ElfSymbols
     void *addr;
 } ElfSymbols;
 
-typedef struct ElfHandle  // this is what MOJOELF_dlopen_*() returns.
+typedef struct ElfHandle // this is what MOJOELF_dlopen_*() returns.
 {
     int mmaps_count;
     void *mmapaddr;
@@ -285,24 +293,23 @@ typedef struct ElfHandle  // this is what MOJOELF_dlopen_*() returns.
     int syms_count;
     ElfSymbols *syms;
     void *entry;
-    void *fini;          // single destructor
-    void **fini_array;   // fini array function in shared library.
-    int fini_array_count;  // number of functions in the fini array.
+    void *fini;           // single destructor
+    void **fini_array;    // fini array function in shared library.
+    int fini_array_count; // number of functions in the fini array.
     int dlopens_count;
     void **dlopens;
-    MOJOELF_UnloaderCallback unloader;  // unloader callback.
+    MOJOELF_UnloaderCallback unloader; // unloader callback.
 } ElfHandle;
-
 
 // Actual shared object loading happens here.
 
 #if MOJOELF_LIBC_DEPENDENCIES
-#define Strcmp(a,b) strcmp(a,b)
-#define Strcpy(a,b) strcpy(a,b)
-#define Memzero(buf,len) memset(buf, '\0', len)
-#define Memcopy(dst,src,len) memcpy(dst,src,len)
+#define Strcmp(a, b) strcmp(a, b)
+#define Strcpy(a, b) strcpy(a, b)
+#define Memzero(buf, len) memset(buf, '\0', len)
+#define Memcopy(dst, src, len) memcpy(dst, src, len)
 #else
-static inline int Strcmp(const char *_a, const char *_b)
+FUNC static inline int Strcmp(const char *_a, const char *_b)
 {
     while (*_a)
     {
@@ -318,7 +325,7 @@ static inline int Strcmp(const char *_a, const char *_b)
     return 0;
 } // Strcmp
 
-static inline void Strcpy(char *_a, const char *_b)
+FUNC static inline void Strcpy(char *_a, const char *_b)
 {
     while (1)
     {
@@ -326,42 +333,42 @@ static inline void Strcpy(char *_a, const char *_b)
         *(_a++) = b;
         if (b == '\0')
             return;
-    } // while    
+    } // while
 } // Strcpy
 
-static inline void Memzero(void *buf, size_t len)
+FUNC static inline void Memzero(void *buf, size_t len)
 {
-    uintptr *ptrnative = (uintptr *) buf;
+    uintptr *ptrnative = (uintptr *)buf;
     uint8 *ptrbyte;
 
-    while (len >= sizeof (uintptr))
+    while (len >= sizeof(uintptr))
     {
         *(ptrnative++) = 0;
-        len -= sizeof (uintptr);
+        len -= sizeof(uintptr);
     } // while
 
-    ptrbyte = (uint8 *) ptrnative;
+    ptrbyte = (uint8 *)ptrnative;
     while (len--)
         *(ptrbyte++) = '\0';
 } // Memzero
 
-static inline void Memcopy(void *dst, const void *src, size_t len)
+FUNC static inline void Memcopy(void *dst, const void *src, size_t len)
 {
-    uintptr *dptrnative = (uintptr *) dst;
-    const uintptr *sptrnative = (uintptr *) src;
+    uintptr *dptrnative = (uintptr *)dst;
+    const uintptr *sptrnative = (uintptr *)src;
     uint8 *dptrbyte;
     const uint8 *sptrbyte;
 
-    while (len >= sizeof (uintptr))
+    while (len >= sizeof(uintptr))
     {
         *dptrnative = *sptrnative;
         dptrnative++;
         sptrnative++;
-        len -= sizeof (uintptr);
+        len -= sizeof(uintptr);
     } // while
 
-    dptrbyte = (uint8 *) dptrnative;
-    sptrbyte = (const uint8 *) sptrnative;
+    dptrbyte = (uint8 *)dptrnative;
+    sptrbyte = (const uint8 *)sptrnative;
     while (len--)
     {
         *dptrbyte = *sptrbyte;
@@ -370,14 +377,6 @@ static inline void Memcopy(void *dst, const void *src, size_t len)
     } // while
 } // Memzero
 #endif
-
-static inline void *Malloc(const size_t len)
-{
-    void *retval = calloc(1, len);
-    if (retval == NULL)
-        set_dlerror("Out of memory");
-    return retval;
-} // Malloc
 
 typedef struct ElfDynTable
 {
@@ -396,30 +395,40 @@ typedef void (*ElfFiniFn)(void);
 //  us split one big function into more manageable chunks.
 typedef struct ElfContext
 {
-    const uint8 *buf;  // buffer passed to dlopen.
-    size_t buflen;   // size in bytes of buffer passed to dlopen.
-    const ElfHeader *header;  // main ELF header (also, start of buffer).
-    ElfHandle *retval;  // allocated handle to be returned from dlopen.
-    const ElfDynTable *dyntab;  // PT_DYNAMIC tables.
-    int dyntabcount;  // PT_DYNAMIC table count.
-    uintptr base;  // "base address" for relative addressing.
-    void *init;   // init function in shared library.
-    void **init_array;   // init array function in shared library.
-    int init_array_count;  // number of functions in the init array.
-    size_t mmaplen;  // number of bytes we want to mmap().
-    const char *strtab;  // string table for dynamic symbols.
-    size_t strtablen;  // length in bytes of dynamic symbol string table.
-    const ElfSymTable *symtab;  // the symbol table.
-    int symtabcount;  // entries in the symbol table.
-    const ElfDynTable *dyntabs[32];  // indexable pointers to dynamic tables.
-    MOJOELF_LoaderCallback loader;    // loader callback.
-    MOJOELF_UnloaderCallback unloader;  // unloader callback.
-    MOJOELF_ResolverCallback resolver;  // resolver callback.
+    const uint8 *buf;                  // buffer passed to dlopen.
+    size_t buflen;                     // size in bytes of buffer passed to dlopen.
+    const ElfHeader *header;           // main ELF header (also, start of buffer).
+    ElfHandle *retval;                 // allocated handle to be returned from dlopen.
+    const ElfDynTable *dyntab;         // PT_DYNAMIC tables.
+    int dyntabcount;                   // PT_DYNAMIC table count.
+    uintptr base;                      // "base address" for relative addressing.
+    void *init;                        // init function in shared library.
+    void **init_array;                 // init array function in shared library.
+    int init_array_count;              // number of functions in the init array.
+    size_t mmaplen;                    // number of bytes we want to mmap().
+    const char *strtab;                // string table for dynamic symbols.
+    size_t strtablen;                  // length in bytes of dynamic symbol string table.
+    const ElfSymTable *symtab;         // the symbol table.
+    int symtabcount;                   // entries in the symbol table.
+    const ElfDynTable *dyntabs[32];    // indexable pointers to dynamic tables.
+    MOJOELF_LoaderCallback loader;     // loader callback.
+    MOJOELF_UnloaderCallback unloader; // unloader callback.
+    MOJOELF_ResolverCallback resolver; // resolver callback.
 } ElfContext;
 
-#define DLOPEN_FAIL(err) do { set_dlerror(err); return 0; } while (0)
+#define DLOPEN_FAIL(err) \
+    print("DLOPEN_FAIL:"err"\n") \
 
-static int validate_elf_header(const ElfContext *ctx)
+/*
+#define DLOPEN_FAIL(err)  \
+    do                    \
+    {                     \
+        set_dlerror(err); \
+        return 0;         \
+    } while (0)
+*/
+
+FUNC static int validate_elf_header(const ElfContext *ctx)
 {
     const ElfHeader *hdr = ctx->header;
     const uint8 *buf = hdr->e_ident;
@@ -427,7 +436,7 @@ static int validate_elf_header(const ElfContext *ctx)
 
     if (ctx->buflen < 64)
         DLOPEN_FAIL("Not enough data");
-    else if ((buf[0]!=0x7F) || (buf[1]!='E') || (buf[2]!='L') || (buf[3]!='F'))
+    else if ((buf[0] != 0x7F) || (buf[1] != 'E') || (buf[2] != 'L') || (buf[3] != 'F'))
         DLOPEN_FAIL("Not an ELF file");
     else if (buf[EI_CLASS] != MOJOELF_ELFCLASS)
         DLOPEN_FAIL("Unsupported/bogus ELF class");
@@ -443,13 +452,13 @@ static int validate_elf_header(const ElfContext *ctx)
         DLOPEN_FAIL("Unsupported/bogus ELF object type");
     else if (hdr->e_machine != MOJOELF_MACHINE_TYPE)
         DLOPEN_FAIL("Unsupported/bogus ELF machine type");
-    else if (hdr->e_version != 1)  // "current"
+    else if (hdr->e_version != 1) // "current"
         DLOPEN_FAIL("Unsupported/bogus ELF object version");
-    else if (hdr->e_ehsize != sizeof (ElfHeader))
+    else if (hdr->e_ehsize != sizeof(ElfHeader))
         DLOPEN_FAIL("Unsupported/bogus ELF main header size");
-    else if (hdr->e_phentsize != sizeof (ElfProgram))
+    else if (hdr->e_phentsize != sizeof(ElfProgram))
         DLOPEN_FAIL("Unsupported/bogus ELF program header size");
-    else if (hdr->e_shentsize != sizeof (ElfSection))
+    else if (hdr->e_shentsize != sizeof(ElfSection))
         DLOPEN_FAIL("Unsupported/bogus ELF section header size");
     else if ((hdr->e_phoff + (hdr->e_phnum * hdr->e_phentsize)) > ctx->buflen)
         DLOPEN_FAIL("Bogus ELF program header offset/count");
@@ -458,11 +467,10 @@ static int validate_elf_header(const ElfContext *ctx)
 
     // we ignore the string table.
 
-    return 1;  // all good!
+    return 1; // all good!
 } // validate_elf_header
 
-
-static int validate_elf_section(const ElfContext *ctx, const ElfSection *section)
+FUNC static int validate_elf_section(const ElfContext *ctx, const ElfSection *section)
 {
     if (section->sh_offset + section->sh_size > ctx->buflen)
     {
@@ -472,13 +480,12 @@ static int validate_elf_section(const ElfContext *ctx, const ElfSection *section
     } // if
     // we currently ignore the string table in validate_elf_header, so we
     //  can't verify this string.
-    //else if ((maxstr > 0) && (sect->sh_name > maxstr))
+    // else if ((maxstr > 0) && (sect->sh_name > maxstr))
     //    DLOPEN_FAIL("Bogus ELF section name index");
     return 1;
 } // validate_elf_section
 
-
-static int validate_elf_program(const ElfContext *ctx, const ElfProgram *prog)
+FUNC static int validate_elf_program(const ElfContext *ctx, const ElfProgram *prog)
 {
     if ((prog->p_offset + prog->p_filesz) > ctx->buflen)
         DLOPEN_FAIL("Bogus ELF program offset/size");
@@ -487,16 +494,15 @@ static int validate_elf_program(const ElfContext *ctx, const ElfProgram *prog)
     return 1;
 } // validate_elf_program
 
-
-static int process_program_headers(ElfContext *ctx)
+FUNC static int process_program_headers(ElfContext *ctx)
 {
     // Figure out the memory range we'll need to allocate.
-    const size_t offset = (size_t) ctx->header->e_phoff;
-    const ElfProgram *program = (const ElfProgram *) (ctx->buf + offset);
-    const int header_count = (int) ctx->header->e_phnum;
+    const size_t offset = (size_t)ctx->header->e_phoff;
+    const ElfProgram *program = (const ElfProgram *)(ctx->buf + offset);
+    const int header_count = (int)ctx->header->e_phnum;
     int i;
 
-    ctx->base = ((uintptr) -1);  // 0xFFFFFFFF or 0xFFFFFFFFFFFFFFFF
+    ctx->base = ((uintptr)-1); // 0xFFFFFFFF or 0xFFFFFFFFFFFFFFFF
 
     for (i = 0; i < header_count; i++, program++)
     {
@@ -515,11 +521,11 @@ static int process_program_headers(ElfContext *ctx)
         // When we see this header, take note for later.
         else if (program->p_type == PT_DYNAMIC)
         {
-            const uint8 *buf = (const uint8 *) ctx->header;
-            if (ctx->dyntab != NULL)  // Can there be more than one of these?!
+            const uint8 *buf = (const uint8 *)ctx->header;
+            if (ctx->dyntab != NULL) // Can there be more than one of these?!
                 DLOPEN_FAIL("Multiple PT_DYNAMIC tables");
-            ctx->dyntab = (const ElfDynTable *) (buf + program->p_offset);
-            ctx->dyntabcount = (program->p_filesz / sizeof (ElfDynTable));
+            ctx->dyntab = (const ElfDynTable *)(buf + program->p_offset);
+            ctx->dyntabcount = (program->p_filesz / sizeof(ElfDynTable));
         } // else if
     } // for
 
@@ -530,18 +536,17 @@ static int process_program_headers(ElfContext *ctx)
 
     // Calculate the final base address and allocation size.
     ctx->base -= (ctx->base % MOJOELF_PAGESIZE);
-    ctx->mmaplen -= (size_t) ctx->base;
+    ctx->mmaplen -= (size_t)ctx->base;
     ctx->mmaplen += (MOJOELF_PAGESIZE - (ctx->mmaplen % MOJOELF_PAGESIZE));
 
     return 1;
 } // process_program_headers
 
-
-static int process_section_headers(ElfContext *ctx)
+FUNC static int process_section_headers(ElfContext *ctx)
 {
-    const size_t offset = (size_t) ctx->header->e_shoff;
-    const ElfSection *section = (const ElfSection *) (ctx->buf + offset);
-    const int header_count = (int) ctx->header->e_shnum;
+    const size_t offset = (size_t)ctx->header->e_shoff;
+    const ElfSection *section = (const ElfSection *)(ctx->buf + offset);
+    const int header_count = (int)ctx->header->e_shnum;
     const ElfDynTable *dt = ctx->dyntabs[DT_SYMTAB];
     int saw_dynsym = 0;
     int i;
@@ -555,7 +560,7 @@ static int process_section_headers(ElfContext *ctx)
         {
             if (dt == NULL)
                 DLOPEN_FAIL("Dynamic symbol table section, but not program");
-            else if ((dt->d_un.d_ptr-ctx->base) != section->sh_offset)
+            else if ((dt->d_un.d_ptr - ctx->base) != section->sh_offset)
                 DLOPEN_FAIL("Dynamic symbol table program/section mismatch");
             else if ((section->sh_offset + section->sh_size) >= ctx->buflen)
                 DLOPEN_FAIL("Bogus dynamic symbol table offset/size");
@@ -574,24 +579,23 @@ static int process_section_headers(ElfContext *ctx)
     return 1;
 } // process_section_headers
 
-
 // Get the ELF programs into memory at the right place.
-static int map_pages(ElfContext *ctx)
+FUNC static int map_pages(ElfContext *ctx)
 {
     // Get us an aligned block of memory where we can change page permissions.
     // This is big enough to store all the program blocks and place them at
     //  the correct relative offsets.
     // !!! FIXME: should we be mapping each section separately?
-    const size_t offset = (size_t) ctx->header->e_phoff;
-    const ElfProgram *program = (const ElfProgram *) (ctx->buf + offset);
-    const int header_count = (int) ctx->header->e_phnum;
+    const size_t offset = (size_t)ctx->header->e_phoff;
+    const ElfProgram *program = (const ElfProgram *)(ctx->buf + offset);
+    const int header_count = (int)ctx->header->e_phnum;
     const size_t mmaplen = ctx->mmaplen;
     const int mmapprot = PROT_READ | PROT_WRITE;
     const int mmapflags = MAP_ANON | MAP_PRIVATE | (ctx->base ? MAP_FIXED : 0);
-    void *mmapaddr = mmap((void *) ctx->base, mmaplen, mmapprot, mmapflags, -1, 0);
+    void *mmapaddr = mmap((void *)ctx->base, mmaplen, mmapprot, mmapflags, -1, 0);
     int i;
 
-    if (mmapaddr == ((void *) MAP_FAILED))
+    if (mmapaddr == ((void *)MAP_FAILED))
         DLOPEN_FAIL("mmap failed");
 
     Memzero(mmapaddr, mmaplen);
@@ -603,7 +607,7 @@ static int map_pages(ElfContext *ctx)
     {
         if ((program->p_type == PT_LOAD) && (program->p_memsz > 0))
         {
-            uint8 *ptr = ((uint8 *) mmapaddr) + (program->p_vaddr - ctx->base);
+            uint8 *ptr = ((uint8 *)mmapaddr) + (program->p_vaddr - ctx->base);
             Memcopy(ptr, ctx->buf + program->p_offset, program->p_filesz);
         } // if
     } // for
@@ -616,45 +620,45 @@ static int map_pages(ElfContext *ctx)
 } // map_pages
 
 // Mark ELF pages with proper permissions.
-static int protect_pages(ElfContext *ctx)
+FUNC static int protect_pages(ElfContext *ctx)
 {
-    const size_t offset = (size_t) ctx->header->e_phoff;
-    const ElfProgram *program = (const ElfProgram *) (ctx->buf + offset);
-    const int header_count = (int) ctx->header->e_phnum;
+    const size_t offset = (size_t)ctx->header->e_phoff;
+    const ElfProgram *program = (const ElfProgram *)(ctx->buf + offset);
+    const int header_count = (int)ctx->header->e_phnum;
     const int mmapprot = PROT_READ | PROT_WRITE;
-    void *mmapaddr = (void *) ctx->retval->mmapaddr;
+    void *mmapaddr = (void *)ctx->retval->mmapaddr;
     int i;
 
     for (i = 0; i < header_count; i++, program++)
     {
         if ((program->p_type == PT_LOAD) && (program->p_memsz > 0))
         {
-            uint8 *ptr = ((uint8 *) mmapaddr) + (program->p_vaddr - ctx->base);
-            const size_t len = (const size_t) program->p_memsz;
-            const int prot = ((program->p_flags & 1) ? PROT_EXEC : 0)  |
+            uint8 *ptr = ((uint8 *)mmapaddr) + (program->p_vaddr - ctx->base);
+            const size_t len = (const size_t)program->p_memsz;
+            const int prot = ((program->p_flags & 1) ? PROT_EXEC : 0) |
                              ((program->p_flags & 2) ? PROT_WRITE : 0) |
-                             ((program->p_flags & 4) ? PROT_READ : 0)  ;
+                             ((program->p_flags & 4) ? PROT_READ : 0);
             if ((prot != mmapprot) && (mprotect(ptr, len, prot) == -1))
                 DLOPEN_FAIL("mprotect failed");
         } // if
     } // for
 
-    return 1;  // all good.
+    return 1; // all good.
 } // protect_pages
 
-static int walk_dynamic_table(ElfContext *ctx)
+FUNC static int walk_dynamic_table(ElfContext *ctx)
 {
     // preliminary walkthrough of the dynamic table.
     const ElfDynTable *dyntab = ctx->dyntab;
     const ElfDynTable **dyntabs = ctx->dyntabs;
     const int dyntabcount = ctx->dyntabcount;
-    uint8 *mmapaddr = (uint8 *) ctx->retval->mmapaddr;
+    uint8 *mmapaddr = (uint8 *)ctx->retval->mmapaddr;
     uintptr strtaboffset = 0;
     int i;
 
     for (i = 0; i < dyntabcount; i++, dyntab++)
     {
-        const int tag = (int) dyntab->d_tag;
+        const int tag = (int)dyntab->d_tag;
 
         if (tag == DT_NULL)
             continue;
@@ -664,7 +668,7 @@ static int walk_dynamic_table(ElfContext *ctx)
             continue;
         } // if
 
-        if (tag < (sizeof (ctx->dyntabs) / sizeof (ctx->dyntabs[0])))
+        if (tag < (sizeof(ctx->dyntabs) / sizeof(ctx->dyntabs[0])))
         {
             if (dyntabs[tag] != NULL)
                 DLOPEN_FAIL("Illegal duplicate dynamic tables");
@@ -689,8 +693,7 @@ static int walk_dynamic_table(ElfContext *ctx)
 
     // We don't know the size of the symbol table yet. We check that later
     //  in process_section_headers()...
-    ctx->symtab = (const ElfSymTable *)
-                    (ctx->buf + (dyntabs[DT_SYMTAB]->d_un.d_ptr - ctx->base));
+    ctx->symtab = (const ElfSymTable *)(ctx->buf + (dyntabs[DT_SYMTAB]->d_un.d_ptr - ctx->base));
 
     if (dyntabs[DT_RELA])
     {
@@ -703,7 +706,8 @@ static int walk_dynamic_table(ElfContext *ctx)
         else if (dyntabs[DT_RELASZ]->d_un.d_val % MOJOELF_SIZEOF_RELAENT)
             DLOPEN_FAIL("Bogus DT_RELASZ value");
         else if ((dyntabs[DT_RELA]->d_un.d_ptr - ctx->base) +
-                 dyntabs[DT_RELASZ]->d_un.d_val >= ctx->buflen)
+                     dyntabs[DT_RELASZ]->d_un.d_val >=
+                 ctx->buflen)
             DLOPEN_FAIL("Bogus DT_RELA value");
     } // if
 
@@ -728,12 +732,13 @@ static int walk_dynamic_table(ElfContext *ctx)
         else if (dyntabs[DT_PLTRELSZ] == NULL)
             DLOPEN_FAIL("No DT_PLTRELSZ table");
         else if ((dyntabs[DT_JMPREL]->d_un.d_ptr - ctx->base) +
-                 dyntabs[DT_PLTRELSZ]->d_un.d_val >= ctx->buflen)
+                     dyntabs[DT_PLTRELSZ]->d_un.d_val >=
+                 ctx->buflen)
             DLOPEN_FAIL("Bogus DT_PLTREL value");
 
         if (dyntabs[DT_PLTREL]->d_un.d_val == DT_REL)
         {
-            if (dyntabs[DT_RELENT] == NULL)  // DT_RELENT
+            if (dyntabs[DT_RELENT] == NULL) // DT_RELENT
                 DLOPEN_FAIL("No DT_RELENT table");
             else if (dyntabs[DT_RELENT]->d_un.d_val != MOJOELF_SIZEOF_RELENT)
                 DLOPEN_FAIL("Unsupported/bogus DT_RELENT value");
@@ -743,7 +748,7 @@ static int walk_dynamic_table(ElfContext *ctx)
 
         else if (dyntabs[DT_PLTREL]->d_un.d_val == DT_RELA)
         {
-            if (dyntabs[DT_RELAENT] == NULL)  // DT_RELAENT
+            if (dyntabs[DT_RELAENT] == NULL) // DT_RELAENT
                 DLOPEN_FAIL("No DT_RELAENT table");
             else if (dyntabs[DT_RELAENT]->d_un.d_val != MOJOELF_SIZEOF_RELAENT)
                 DLOPEN_FAIL("Unsupported/bogus DT_RELAENT value");
@@ -758,9 +763,9 @@ static int walk_dynamic_table(ElfContext *ctx)
     } // if
 
     strtaboffset = dyntabs[DT_STRTAB]->d_un.d_ptr - ctx->base;
-    ctx->strtablen = (size_t) dyntabs[DT_STRSZ]->d_un.d_val;
-    ctx->strtab = (const char *) (ctx->buf + strtaboffset);
-    if (ctx->strtablen == 0)  // technically this is allowed, but oh well.
+    ctx->strtablen = (size_t)dyntabs[DT_STRSZ]->d_un.d_val;
+    ctx->strtab = (const char *)(ctx->buf + strtaboffset);
+    if (ctx->strtablen == 0) // technically this is allowed, but oh well.
         DLOPEN_FAIL("Dynamic string table is empty");
     else if ((strtaboffset + ctx->strtablen) > ctx->buflen)
         DLOPEN_FAIL("Dynamic string table has bogus offset and/or length");
@@ -769,45 +774,51 @@ static int walk_dynamic_table(ElfContext *ctx)
     else if (ctx->strtab[ctx->strtablen - 1] != '\0')
         DLOPEN_FAIL("Dynamic string table doesn't end with null byte");
 
-    if (dyntabs[DT_INIT])
-        ctx->init = mmapaddr + (dyntabs[DT_INIT]->d_un.d_ptr-ctx->base);
+    if (dyntabs[DT_INIT]) {
+        ctx->init = mmapaddr + (dyntabs[DT_INIT]->d_un.d_ptr - ctx->base);
+    }
 
-    if (dyntabs[DT_FINI])
-        ctx->retval->fini = mmapaddr + (dyntabs[DT_FINI]->d_un.d_ptr-ctx->base);
+    if (dyntabs[DT_FINI]) {
+        ctx->retval->fini = mmapaddr + (dyntabs[DT_FINI]->d_un.d_ptr - ctx->base);
+    }
 
     if (dyntabs[DT_INIT_ARRAY])
     {
+        DLOPEN_FAIL("FOUND DT_INIT_ARRAY, processing now");
         if (dyntabs[DT_INIT_ARRAYSZ] == NULL)
             DLOPEN_FAIL("No DT_INIT_ARRAYSZ table");
-        else if (dyntabs[DT_INIT_ARRAYSZ]->d_un.d_val % sizeof (void*))
+        else if (dyntabs[DT_INIT_ARRAYSZ]->d_un.d_val % sizeof(void *))
             DLOPEN_FAIL("Bogus DT_INIT_ARRAYSZ value");
         else if ((dyntabs[DT_INIT_ARRAY]->d_un.d_ptr - ctx->base) +
-                 dyntabs[DT_INIT_ARRAYSZ]->d_un.d_val >= ctx->buflen)
+                     dyntabs[DT_INIT_ARRAYSZ]->d_un.d_val >=
+                 ctx->buflen)
+            DLOPEN_FAIL("INIT VAL bigger than buf full length");
             DLOPEN_FAIL("Bogus DT_INIT_ARRAY value");
-        ctx->init_array = (void **) (mmapaddr + (dyntabs[DT_INIT_ARRAY]->d_un.d_ptr-ctx->base));
-        ctx->init_array_count = (int) (dyntabs[DT_INIT_ARRAYSZ]->d_un.d_val / sizeof (void*));
+        ctx->init_array = (void **)(mmapaddr + (dyntabs[DT_INIT_ARRAY]->d_un.d_ptr - ctx->base));
+        ctx->init_array_count = (int)(dyntabs[DT_INIT_ARRAYSZ]->d_un.d_val / sizeof(void *));
     } // if
 
     if (dyntabs[DT_FINI_ARRAY])
     {
         if (dyntabs[DT_FINI_ARRAYSZ] == NULL)
             DLOPEN_FAIL("No DT_FINI_ARRAYSZ table");
-        else if (dyntabs[DT_FINI_ARRAYSZ]->d_un.d_val % sizeof (void*))
+        else if (dyntabs[DT_FINI_ARRAYSZ]->d_un.d_val % sizeof(void *))
             DLOPEN_FAIL("Bogus DT_FINI_ARRAYSZ value");
         else if ((dyntabs[DT_FINI_ARRAY]->d_un.d_ptr - ctx->base) +
-                 dyntabs[DT_FINI_ARRAYSZ]->d_un.d_val >= ctx->buflen)
+                     dyntabs[DT_FINI_ARRAYSZ]->d_un.d_val >=
+                 ctx->buflen)
+            DLOPEN_FAIL("Fini FINI ARRAY bigger than buf full length");
             DLOPEN_FAIL("Bogus DT_FINI_ARRAY value");
-        ctx->retval->fini_array = (void **) (mmapaddr + (dyntabs[DT_FINI_ARRAY]->d_un.d_ptr-ctx->base));
-        ctx->retval->fini_array_count = (int) (dyntabs[DT_FINI_ARRAYSZ]->d_un.d_val / sizeof (void*));
+        ctx->retval->fini_array = (void **)(mmapaddr + (dyntabs[DT_FINI_ARRAY]->d_un.d_ptr - ctx->base));
+        ctx->retval->fini_array_count = (int)(dyntabs[DT_FINI_ARRAYSZ]->d_un.d_val / sizeof(void *));
     } // if
 
     return 1;
 } // walk_dynamic_table
 
-
 // We might need to load symbols in other libraries. The app-supplied
 //  callbacks will be given a chance to handle symbol resolution here.
-static int load_external_dependencies(ElfContext *ctx)
+FUNC static int load_external_dependencies(ElfContext *ctx)
 {
     const ElfDynTable *dyntab = ctx->dyntab;
     const int dyntabcount = ctx->dyntabcount;
@@ -833,9 +844,9 @@ static int load_external_dependencies(ElfContext *ctx)
     } // if
 
     if (ctx->retval->dlopens_count == 0)
-        return 1;  // nothing to do.
+        return 1; // nothing to do.
 
-    ctx->retval->dlopens = (void **) Malloc(ctx->retval->dlopens_count * sizeof (void *));
+    ctx->retval->dlopens = (void **)Malloc(ctx->retval->dlopens_count * sizeof(void *));
     if (ctx->retval->dlopens == NULL)
         return 0;
 
@@ -859,17 +870,16 @@ static int load_external_dependencies(ElfContext *ctx)
 
                 ctx->retval->dlopens[dlopens_count++] = handle;
                 if (dlopens_count >= ctx->retval->dlopens_count)
-                    return 1;  // done!
+                    return 1; // done!
             } // else
         } // if
     } // for
 
-    assert(0);
+    // assert(0);
     DLOPEN_FAIL("Bug: didn't see as many DT_NEEDED on second pass");
 } // load_external_dependencies
 
-
-static int resolve_symbol(ElfContext *ctx, const uint32 sym, uintptr *_addr)
+FUNC static int resolve_symbol(ElfContext *ctx, const uint32 sym, uintptr *_addr)
 {
     const ElfSymTable *symbol = ctx->symtab + sym;
     const char *symstr = NULL;
@@ -883,11 +893,13 @@ static int resolve_symbol(ElfContext *ctx, const uint32 sym, uintptr *_addr)
     symstr = ctx->strtab + symbol->st_name;
 
     if (*symstr == '\0')
-        addr = ((uint8 *) ctx->retval->mmapaddr) + symbol->st_value;
+        addr = ((uint8 *)ctx->retval->mmapaddr) + symbol->st_value;
     else
     {
         dbgprintf(("Resolving '%s' ...\n", symstr));
-
+        print("Resoving ");
+        print(symstr);
+        print("\n");
         int i;
         for (i = 0; (addr == NULL) && (i < ctx->retval->dlopens_count); i++)
             addr = ctx->resolver(ctx->retval->dlopens[i], symstr);
@@ -898,7 +910,7 @@ static int resolve_symbol(ElfContext *ctx, const uint32 sym, uintptr *_addr)
             addr = MOJOELF_dlsym(ctx->retval, symstr);
             if (addr == NULL)
             {
-                addr = ctx->resolver(NULL, symstr);  // last try.
+                addr = ctx->resolver(NULL, symstr); // last try.
                 if (addr == NULL)
                 {
                     if (ELF_ST_BIND(symbol->st_info) != STB_WEAK)
@@ -908,18 +920,22 @@ static int resolve_symbol(ElfContext *ctx, const uint32 sym, uintptr *_addr)
         } // if
 
         dbgprintf(("Resolved '%s' to %p ...\n", symstr, addr));
+        print("Resolved ");
+        print(symstr);
+        print(" to ");
+        print_hex(addr);
+        print("\n");
     } // if
 
-    *_addr = (uintptr) addr;
+    *_addr = (uintptr)addr;
     return 1;
 } // resolve_symbol
 
-
-static int do_fixup(ElfContext *ctx, const uint32 r_type, const uint32 r_sym,
-                    const uintptr r_offset, const intptr r_addend)
+FUNC static int do_fixup(ElfContext *ctx, const uint32 r_type, const uint32 r_sym,
+                         const uintptr r_offset, const intptr r_addend)
 {
-    uint8 *mmapaddr = (uint8 *) ctx->retval->mmapaddr;
-    uintptr *fixup = (uintptr *) (mmapaddr + (r_offset - ctx->base));
+    uint8 *mmapaddr = (uint8 *)ctx->retval->mmapaddr;
+    uintptr *fixup = (uintptr *)(mmapaddr + (r_offset - ctx->base));
     uintptr addr = 0;
 
     if (r_sym >= ctx->symtabcount)
@@ -932,46 +948,46 @@ static int do_fixup(ElfContext *ctx, const uint32 r_type, const uint32 r_sym,
         // There are way more than these, but these seem to be the
         //  only ones average libraries use.
         // Note libc.so.6 itself also seems to use: R_*_64, R_*_TPOFF64
-// !!! FIXME: This is all x86-specific. Research x86_64.
-        case R_COPY:
-            if (!r_sym)
-                DLOPEN_FAIL("Bogus copy fixup");
-            // !!! FIXME: this should check the source and dest symbols,
-            // !!! FIXME:  use the smaller size (but they _should_ match
-            // !!! FIXME:  if everything is built correctly. Naturally, this
-            // !!! FIXME:  will fail to be true eventually).
-            memcpy(fixup, (void *) addr, (ctx->symtab+r_sym)->st_size);
-            break;
-        case R_GLOB_DATA:
-        case R_JUMP_SLOT:
-            *fixup = addr;
-            break;
-        case R_RELATIVE:
-            *fixup += (uintptr) (mmapaddr + r_addend);
-            break;
-        case R_32:  // !!! FIXME: presumable should be (uint32), not (uintptr).
-            *fixup += (uintptr) (addr + r_addend);
-            break;
-        case R_PC32:  // !!! FIXME: presumable should be (uint32), not (uintptr).
-            *fixup += (uintptr) ((addr + r_addend) - ((uintptr) fixup));
-            break;
-        case R_NONE:
-            break;  // do nothing.
-        default:
-            DLOPEN_FAIL("write me");  // haven't seen this yet.
-            break;
+        // !!! FIXME: This is all x86-specific. Research x86_64.
+    case R_COPY:
+        if (!r_sym)
+            DLOPEN_FAIL("Bogus copy fixup");
+        // !!! FIXME: this should check the source and dest symbols,
+        // !!! FIXME:  use the smaller size (but they _should_ match
+        // !!! FIXME:  if everything is built correctly. Naturally, this
+        // !!! FIXME:  will fail to be true eventually).
+        Memcopy(fixup, (void *)addr, (ctx->symtab + r_sym)->st_size);
+        break;
+    case R_GLOB_DATA:
+    case R_JUMP_SLOT:
+        *fixup = addr;
+        break;
+    case R_RELATIVE:
+        *fixup += (uintptr)(mmapaddr + r_addend);
+        break;
+    case R_32: // !!! FIXME: presumable should be (uint32), not (uintptr).
+        *fixup += (uintptr)(addr + r_addend);
+        break;
+    case R_PC32: // !!! FIXME: presumable should be (uint32), not (uintptr).
+        *fixup += (uintptr)((addr + r_addend) - ((uintptr)fixup));
+        break;
+    case R_NONE:
+        break; // do nothing.
+    default:
+        DLOPEN_FAIL("write me"); // haven't seen this yet.
+        break;
     } // switch
 
     return 1;
 } // do_fixup
 
-static int fixup_rela_internal(ElfContext *ctx, const ElfDynTable *dt_rela,
-                               const ElfDynTable *dt_relasz)
+FUNC static int fixup_rela_internal(ElfContext *ctx, const ElfDynTable *dt_rela,
+                                    const ElfDynTable *dt_relasz)
 {
-    const size_t offset = ((size_t) dt_rela->d_un.d_ptr) - ctx->base;
-    const size_t relasz = (size_t) dt_relasz->d_un.d_val;
+    const size_t offset = ((size_t)dt_rela->d_un.d_ptr) - ctx->base;
+    const size_t relasz = (size_t)dt_relasz->d_un.d_val;
     const size_t count = relasz / MOJOELF_SIZEOF_RELAENT;
-    const ElfRelA *rela = (const ElfRelA *) (ctx->buf + offset);
+    const ElfRelA *rela = (const ElfRelA *)(ctx->buf + offset);
     int i;
 
     for (i = 0; i < count; i++, rela++)
@@ -988,18 +1004,18 @@ static inline int fixup_rela(ElfContext *ctx)
 {
     const ElfDynTable *dt_rela = ctx->dyntabs[DT_RELA];
     const ElfDynTable *dt_relasz = ctx->dyntabs[DT_RELASZ];
-    if (dt_rela == NULL)  // it's optional, we're done if it's not there.
+    if (dt_rela == NULL) // it's optional, we're done if it's not there.
         return 1;
     return fixup_rela_internal(ctx, dt_rela, dt_relasz);
 } // fixup_rela
 
-static int fixup_rel_internal(ElfContext *ctx, const ElfDynTable *dt_rel,
-                              const ElfDynTable *dt_relsz)
+FUNC static int fixup_rel_internal(ElfContext *ctx, const ElfDynTable *dt_rel,
+                                   const ElfDynTable *dt_relsz)
 {
-    const size_t offset = ((size_t) dt_rel->d_un.d_ptr) - ctx->base;
-    const size_t relsz = (size_t) dt_relsz->d_un.d_val;
+    const size_t offset = ((size_t)dt_rel->d_un.d_ptr) - ctx->base;
+    const size_t relsz = (size_t)dt_relsz->d_un.d_val;
     const size_t count = relsz / MOJOELF_SIZEOF_RELENT;
-    const ElfRel *rel = (const ElfRel *) (ctx->buf + offset);
+    const ElfRel *rel = (const ElfRel *)(ctx->buf + offset);
     int i;
 
     for (i = 0; i < count; i++, rel++)
@@ -1016,7 +1032,7 @@ static inline int fixup_rel(ElfContext *ctx)
 {
     const ElfDynTable *dt_rel = ctx->dyntabs[DT_REL];
     const ElfDynTable *dt_relsz = ctx->dyntabs[DT_RELSZ];
-    if (dt_rel == NULL)  // it's optional, we're done if it's not there.
+    if (dt_rel == NULL) // it's optional, we're done if it's not there.
         return 1;
     return fixup_rel_internal(ctx, dt_rel, dt_relsz);
 } // fixup_rel
@@ -1026,17 +1042,17 @@ static inline int fixup_jmprel(ElfContext *ctx)
     const ElfDynTable *dt_jmprel = ctx->dyntabs[DT_JMPREL];
     const ElfDynTable *dt_jmprelsz = ctx->dyntabs[DT_PLTRELSZ];
 
-    if (dt_jmprel == NULL)  // it's optional, we're done if it's not there.
+    if (dt_jmprel == NULL) // it's optional, we're done if it's not there.
         return 1;
 
     if (ctx->dyntabs[DT_PLTREL]->d_un.d_val == DT_RELA)
         return fixup_rela_internal(ctx, dt_jmprel, dt_jmprelsz);
 
-    assert(ctx->dyntabs[DT_PLTREL]->d_un.d_val == DT_REL);
+    // assert(ctx->dyntabs[DT_PLTREL]->d_un.d_val == DT_REL);
     return fixup_rel_internal(ctx, dt_jmprel, dt_jmprelsz);
 } // fixup_jmprel
 
-static int fixup_relocations(ElfContext *ctx)
+FUNC static int fixup_relocations(ElfContext *ctx)
 {
     if (!fixup_rela(ctx))
         return 0;
@@ -1047,7 +1063,7 @@ static int fixup_relocations(ElfContext *ctx)
     return 1;
 } // fixup_relocations
 
-static int add_exported_symbol(ElfContext *ctx, const char *sym, void *addr)
+FUNC static int add_exported_symbol(ElfContext *ctx, const char *sym, void *addr)
 {
     // !!! FIXME: We should really use a hash table for all this.
     const int syms_count = ctx->retval->syms_count;
@@ -1055,7 +1071,7 @@ static int add_exported_symbol(ElfContext *ctx, const char *sym, void *addr)
 
     // We don't check for duplicates here. You get the first one in the list!
 
-    syms[syms_count].sym = (char *) Malloc(strlen(sym) + 1);
+    syms[syms_count].sym = (char *)Malloc(strlen(sym) + 1);
     if (syms[syms_count].sym == NULL)
         return 0;
 
@@ -1066,8 +1082,7 @@ static int add_exported_symbol(ElfContext *ctx, const char *sym, void *addr)
     return 1;
 } // add_exported_symbol
 
-
-static int build_export_list(ElfContext *ctx)
+FUNC static int build_export_list(ElfContext *ctx)
 {
     const ElfSymTable *symbol = ctx->symtab;
     int symcount = 0;
@@ -1076,7 +1091,7 @@ static int build_export_list(ElfContext *ctx)
     for (i = 1; i <= ctx->symtabcount; i++, symbol++)
     {
         const uintptr offset = symbol->st_value ? (symbol->st_value - ctx->base) : 0;
-        void *addr = ((uint8 *) ctx->retval->mmapaddr) + offset;
+        void *addr = ((uint8 *)ctx->retval->mmapaddr) + offset;
         const char *symstr;
 
         if (offset > ctx->retval->mmaplen)
@@ -1086,7 +1101,7 @@ static int build_export_list(ElfContext *ctx)
 
         symstr = ctx->strtab + symbol->st_name;
 
-        if ((*symstr != '\0') && 
+        if ((*symstr != '\0') &&
             (symbol->st_shndx != SHN_UNDEF) &&
             (symbol->st_shndx != SHN_ABS) &&
             (addr != ctx->init) &&
@@ -1097,9 +1112,9 @@ static int build_export_list(ElfContext *ctx)
     } // for
 
     if (symcount == 0)
-        return 1;  // nothing to do!
+        return 1; // nothing to do!
 
-    ctx->retval->syms = (ElfSymbols *) Malloc(sizeof (ElfSymbols) * symcount);
+    ctx->retval->syms = (ElfSymbols *)Malloc(sizeof(ElfSymbols) * symcount);
     if (ctx->retval->syms == NULL)
         return 0;
 
@@ -1107,10 +1122,10 @@ static int build_export_list(ElfContext *ctx)
     for (i = 1; i <= ctx->symtabcount; i++, symbol++)
     {
         const uintptr offset = symbol->st_value ? (symbol->st_value - ctx->base) : 0;
-        void *addr = ((uint8 *) ctx->retval->mmapaddr) + offset;
+        void *addr = ((uint8 *)ctx->retval->mmapaddr) + offset;
         const char *symstr = ctx->strtab + symbol->st_name;
 
-        if ((*symstr != '\0') && 
+        if ((*symstr != '\0') &&
             (symbol->st_shndx != SHN_UNDEF) &&
             (symbol->st_shndx != SHN_ABS) &&
             (addr != ctx->init) &&
@@ -1120,89 +1135,113 @@ static int build_export_list(ElfContext *ctx)
             if (!add_exported_symbol(ctx, symstr, addr))
                 return 0;
             else if (ctx->retval->syms_count == symcount)
-                break;  // found them all.
+                break; // found them all.
         } // if
     } // for
 
-    assert(ctx->retval->syms_count == symcount);
+    // assert(ctx->retval->syms_count == symcount);
     return 1;
 } // build_export_list
 
-
-static int call_so_init(ElfContext *ctx)
+FUNC static int call_so_init(ElfContext *ctx)
 {
     if (ctx->init != NULL)
-        ((ElfInitFn) ctx->init)(0, NULL, NULL);
+        ((ElfInitFn)ctx->init)(0, NULL, NULL);
 
     if (ctx->init_array != NULL)
     {
         int i;
-        for (i = 0; i < ctx->init_array_count; i++)
-            ((ElfInitFn) ctx->init_array[i])(0, NULL, NULL);
+        for (i = 0; i < ctx->init_array_count; i++) {
+            if ((long)ctx->buf + (long)ctx->buflen < (long)ctx->init_array[i]) {
+                DLOPEN_FAIL("init_array out of bounds");
+            } else {
+                ((ElfInitFn)ctx->init_array[i])(0, NULL, NULL);
+            }
+        }
     } // if
 
     return 1;
 } // call_so_init
 
-static void *noop_loader(const char *soname, const char *rpath, const char *runpath) { return NULL; }
-static void *noop_resolver(void *handle, const char *sym) { return NULL; }
-static void noop_unloader(void *handle) {}
+FUNC static void *noop_loader(const char *soname, const char *rpath, const char *runpath) { return NULL; }
+FUNC static void *noop_resolver(void *handle, const char *sym) { return NULL; }
+FUNC static void noop_unloader(void *handle) {}
 
-void *MOJOELF_dlopen_mem(const void *buf, const long buflen,
-                         const MOJOELF_Callbacks *callbacks)
+FUNC void *MOJOELF_dlopen_mem(const void *buf, const long buflen,
+                              const MOJOELF_Callbacks *callbacks)
 {
-    static const MOJOELF_Callbacks nullcb = { NULL, NULL, NULL };
+    static const MOJOELF_Callbacks nullcb = {NULL, NULL, NULL};
     ElfHandle *handle = NULL;
     ElfContext ctx;
 
-    assert(sizeof (ElfHeader) == MOJOELF_SIZEOF_ELF_HEADER);
-    assert(sizeof (ElfProgram) == MOJOELF_SIZEOF_PROGRAM_HEADER);
-    assert(sizeof (ElfSection) == MOJOELF_SIZEOF_SECTION_HEADER);
+    // assert(sizeof (ElfHeader) == MOJOELF_SIZEOF_ELF_HEADER);
+    // assert(sizeof (ElfProgram) == MOJOELF_SIZEOF_PROGRAM_HEADER);
+    // assert(sizeof (ElfSection) == MOJOELF_SIZEOF_SECTION_HEADER);
 
-    handle = (ElfHandle *) Malloc(sizeof (ElfHandle));
+    handle = (ElfHandle *)Malloc(sizeof(ElfHandle));
     if (handle == NULL)
         return NULL;
 
     if (callbacks == NULL)
         callbacks = &nullcb;
 
-    Memzero(&ctx, sizeof (ElfContext));
-    ctx.buf = (const uint8 *) buf;
-    ctx.buflen = (size_t) buflen;
+    Memzero(&ctx, sizeof(ElfContext));
+    ctx.buf = (const uint8 *)buf;
+    ctx.buflen = (size_t)buflen;
     ctx.loader = callbacks->loader ? callbacks->loader : noop_loader;
     ctx.resolver = callbacks->resolver ? callbacks->resolver : noop_resolver;
     ctx.unloader = callbacks->unloader ? callbacks->unloader : noop_unloader;
-    ctx.header = (const ElfHeader *) buf;
+    ctx.header = (const ElfHeader *)buf;
     ctx.retval = handle;
-    ctx.retval->mmapaddr = ((void *) MAP_FAILED);
-    ctx.retval->entry = (void *) ctx.header->e_entry;
+    ctx.retval->mmapaddr = ((void *)MAP_FAILED);
+    ctx.retval->entry = (void *)ctx.header->e_entry;
     ctx.retval->unloader = ctx.unloader;
 
     // here we go.
-    if (!validate_elf_header(&ctx)) goto fail;
-    else if (!process_program_headers(&ctx)) goto fail;
-    else if (!map_pages(&ctx)) goto fail;
-    else if (!walk_dynamic_table(&ctx)) goto fail;
-    else if (!process_section_headers(&ctx)) goto fail;
-    else if (!load_external_dependencies(&ctx)) goto fail;
-    else if (!build_export_list(&ctx)) goto fail;
-    else if (!fixup_relocations(&ctx)) goto fail;
-    else if (!protect_pages(&ctx)) goto fail;
-    else if (!call_so_init(&ctx)) goto fail;
-
+    if (!validate_elf_header(&ctx))
+    {
+        goto fail;
+    } 
+    else if (!process_program_headers(&ctx)) {
+        goto fail;
+    }
+    else if (!map_pages(&ctx)) {
+        goto fail;
+    }
+    else if (!walk_dynamic_table(&ctx)) {
+        goto fail;
+    }
+    else if (!process_section_headers(&ctx)) {
+        goto fail;
+    }
+    else if (!load_external_dependencies(&ctx)) {
+        goto fail;
+    }
+    else if (!build_export_list(&ctx)) {
+        goto fail;
+    }
+    else if (!fixup_relocations(&ctx)) {
+        goto fail;
+    }
+    else if (!protect_pages(&ctx)) {
+        goto fail;
+    }
+    else if (!call_so_init(&ctx)) {
+        goto fail;
+    }
     // we made it!
     return ctx.retval;
 
 fail:
-    ctx.retval->fini = NULL;  // don't try to call this in MOJOELF_dlclose()!
-    MOJOELF_dlclose(ctx.retval);  // clean up any half-complete stuff.
+    ctx.retval->fini = NULL; // don't try to call this in MOJOELF_dlclose()!
+    // MOJOELF_dlclose(ctx.retval);  // clean up any half-complete stuff.
+    print("MOJOELF_dlopen_mem failed!");
     return NULL;
 } // MOJOELF_dlopen_mem
 
-
-void *MOJOELF_dlsym(void *lib, const char *sym)
+FUNC void *MOJOELF_dlsym(void *lib, const char *sym)
 {
-    const ElfHandle *h = (const ElfHandle *) lib;
+    const ElfHandle *h = (const ElfHandle *)lib;
     int i;
 
     if (h == NULL)
@@ -1222,97 +1261,19 @@ void *MOJOELF_dlsym(void *lib, const char *sym)
     return NULL;
 } // MOJOELF_dlsym
 
-
-void MOJOELF_dlclose(void *lib)
+FUNC const void *MOJOELF_getentry(void *lib)
 {
-    ElfHandle *h = (ElfHandle *) lib;
-    int i;
-
-    if (h == NULL)
-        return;
-
-    // ELF spec says FINI_ARRAY is executed in reverse order, so count down.
-    if (h->fini_array != NULL)
-    {
-        for (i = h->fini_array_count-1; i >= 0; i--)
-            ((ElfFiniFn) h->fini_array[i])();
-    } // if
-
-    if (h->fini != NULL)
-        ((ElfFiniFn) h->fini)();
-
-    if (h->dlopens != NULL)
-    {
-        for (i = 0; i < h->dlopens_count; i++)
-        {
-            if (h->dlopens[i])
-                h->unloader(h->dlopens[i]);
-        } // for
-        free(h->dlopens);
-    } // if
-
-    if (h->mmapaddr != MAP_FAILED)
-        munmap(h->mmapaddr, h->mmaplen);
-
-    if (h->syms != NULL)
-    {
-        for (i = 0; i < h->syms_count; i++)
-            free(h->syms[i].sym);
-        free(h->syms);
-    } // if
-
-    free(h);
-} // MOJOELF_dlclose
-
-
-#if MOJOELF_SUPPORT_DLOPEN_FILE
-void *MOJOELF_dlopen_file(const char *fname, const MOJOELF_Callbacks *cb)
-{
-    void *retval = NULL;
-    struct stat statbuf;
-    int fd = open(fname, O_RDONLY);
-    uint8 *buf = NULL;
-
-    if (fd == -1)
-        set_dlerror(strerror(errno));
-    else if (fstat(fd, &statbuf) == -1)
-        set_dlerror(strerror(errno));
-    else if ((buf = (uint8 *) malloc(statbuf.st_size)) == NULL)
-        set_dlerror("out of memory");
-    else if (read(fd, buf, statbuf.st_size) != statbuf.st_size)
-        set_dlerror(strerror(errno));
-    else
-    {
-        close(fd);
-        fd = -1;
-        retval = MOJOELF_dlopen_mem(buf, statbuf.st_size, cb);
-    } // else
-
-    if (fd != -1)
-        close(fd);
-
-    if (buf != NULL)
-        free(buf);
-
-    return retval;
-} // MOJOELF_dlopen_file
-#endif
-
-
-const void *MOJOELF_getentry(void *lib)
-{
-    const ElfHandle *h = (const ElfHandle *) lib;
+    const ElfHandle *h = (const ElfHandle *)lib;
     return h ? h->entry : NULL;
 } // MOJOELF_getentry
 
-void MOJOELF_getmmaprange(void *lib, void **addr, unsigned long *len)
+FUNC void MOJOELF_getmmaprange(void *lib, void **addr, unsigned long *len)
 {
-    const ElfHandle *h = (const ElfHandle *) lib;
+    const ElfHandle *h = (const ElfHandle *)lib;
     if (addr)
         *addr = h->mmapaddr;
     if (len)
-        *len = (unsigned long) h->mmaplen;
+        *len = (unsigned long)h->mmaplen;
 } // MOJOELF_getmmaprange
-
 
 // end of mojoelf.c ...
