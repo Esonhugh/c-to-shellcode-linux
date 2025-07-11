@@ -24,6 +24,16 @@ DEBUG=pwndbg
 build: payload.obj
 build: link
 build: cleanup
+build: 
+	@echo "Payload built successfully."
+	@echo "raw Payload size: "
+	@wc -c payload.bin
+	@echo "evil so file size: "
+	@wc -c ./test/test.so
+	@echo "Append evil so file "
+	cat ./test/test.so >> ./payload.bin
+	@echo "Payload size: "
+	@wc -c payload.bin
 
 # run the payload with a custom loader 
 run: craft

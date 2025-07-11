@@ -1,0 +1,211 @@
+
+#define __PRINT
+#include "../common/common.h"
+#define __X64
+#include "include/elf_struct.h"
+
+#ifdef __PRINT
+#define LOG(str) print(str)
+#else
+#define LOG(str) (do {} while (true))
+#endif
+
+#define BADADDR ((void *) -1)
+
+#define MMAP_LOAD_BASE ((void*) 0xc0000000)
+
+FUNC int check_header(elf_header* header) {
+	if (*(uint*) header->e_ident != 0x464c457f) {
+		LOG("elf magic header not detected.\n");
+		return 0;
+	}
+	if (header->e_ident[4] != (sizeof(void*) / 4)) { // ei_class, 1: ELFCLASS32, 2: ELFCLASS64
+		LOG("elf class mismatch.\n");
+		return 0;
+	}
+	if (header->e_ident[5] != 1) {
+		LOG("LSB expected.\n");
+		return 0;
+	}
+	if (header->e_type != 2 && header->e_type != 3) {
+		LOG("Dynamic library or executable expected.\n");
+		return 0;
+	}
+	if (header->e_ehsize != sizeof(elf_header)) {
+		LOG("Unexpected header size.\n");
+		return 0;
+	}
+	return 1;
+}
+
+FUNC int init_array_filter(void* base, void (*init_array_item)()) {
+	LOG("Executing init array item...\n");
+	return 1;
+}
+
+FUNC const elf_dyn* find_dyn_entry(const elf_dyn* dyn, int type) {
+	for (; dyn->d_tag != 0; dyn++) { // DT_NULL
+		if (dyn->d_tag == type) return dyn;
+	}
+	return NULL;
+}
+
+FUNC void* MY_DLOPEN(const char* buf, size_t size) {
+	elf_header* header = (elf_header*)((void*)buf);
+	LOG("checking elf header...\n");
+	if (!check_header(header)) {
+		return BADADDR;
+	}
+
+	elf_program_header* pheader = NULL;
+	elf_dyn* dyn = NULL;
+
+	int e_phentsize = header->e_phentsize;
+	int e_phnum = header->e_phnum;
+
+	if (e_phentsize != sizeof(elf_program_header)) {
+		LOG("unexpected program header size.\n");
+		return BADADDR;
+	}
+
+	int is_pie; // simple detection, not exact
+	LOG("determine pie:\n");
+	
+	
+	// lseek(fd, header->e_phoff, SEEK_SET);
+	for (int i = 0; i < e_phnum; i++) {
+		// Load Pheader 
+		// 		LOGV("scanning phdr %d...\n", i);
+		// if (read(fd, &pheader, sizeof(pheader)) != sizeof(pheader)) {
+		// 	LOGE("read pheader error\n");
+		//	close(fd);
+		//	return BADADDR;
+		// }
+		pheader = (elf_program_header*) ((size_t) buf + header-> e_phoff + i * sizeof(pheader));
+
+		if (pheader->p_type != 1 || pheader->p_memsz == 0) { // not PT_LOAD or nothing to load
+			LOG("not load or p_memsz is 0\n");
+			continue;
+		}
+		if (pheader->p_offset != 0) { // not header
+			LOG("p_offset is not 0, not header\n");
+			continue;
+		}
+		if (pheader->p_vaddr == 0) {
+			LOG("p_vaddr is 0, is pie\n");
+			is_pie = 1; // load 0 to 0 (pie)
+		} else {
+			LOG("p_vaddr is not 0, not pie\n");
+			is_pie = 0; // load 0 to 0x??? (maybe not pie)
+		}
+		break;
+	}
+	
+	void* base;
+	if (is_pie) {
+		LOG("pie\n");
+		base = MMAP_LOAD_BASE;
+		LOG("determine LOAD_BASE...\n");
+		// try to find a free address
+		while (base != mmap(base, 0x1000, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0)) {
+			base = (void*) ((size_t) base + 0x1000000);
+		}
+		munmap(base, 0x1000);
+	} else {
+		LOG("not pie\n");
+		base = NULL;
+	}
+	LOG("trying loading at ");
+	print_hex(base);
+
+	// lseek(fd, header.e_phoff, SEEK_SET);
+	for (int i = 0; i < e_phnum; i++) {
+		LOG("processing phdr ...\n");
+		// if (read(fd, &pheader, sizeof(pheader)) != sizeof(pheader)) {
+		//	LOG("read pheader error\n");
+		//	close(fd);
+		//	return BADADDR;
+		//}
+		pheader = (elf_program_header*) ((size_t) buf + header->e_phoff + i * sizeof(pheader));
+
+		if (pheader->p_type != 1 || pheader->p_memsz == 0) { // not PT_LOAD or nothing to load
+			if (pheader->p_type == 2) { // DYNAMIC
+				if (dyn != NULL) {
+					LOG("duplicated DYNAMIC PHT detected.\n");
+					return BADADDR;
+				} else {
+					dyn = (elf_dyn*) ((size_t) base + pheader->p_vaddr);
+				}
+			}
+			continue;
+		}
+		void* addr = (void*) (((size_t) base + pheader->p_vaddr) & ~0xfff);
+		int offset = pheader->p_vaddr & 0xfff;
+		size_t size = (offset + pheader->p_filesz + 0xfff) & ~0xfff;
+		if (addr != mmap(addr, size, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS, -1, pheader->p_offset - offset)) {
+			LOG("failed to mmap ");
+			print_hex(pheader->p_offset);
+			LOG(" to ");
+			print_hex(pheader->p_vaddr + (size_t)base);
+			LOG(".\n");
+			return BADADDR;
+		}
+		if (offset) {
+			memset(addr, 0, offset); // not exactly needed
+		}
+		if (pheader->p_memsz != pheader->p_filesz) {
+			if (pheader->p_memsz < pheader->p_filesz) {
+				LOG("unexpected: filesz bigger than memsz.\n");
+				return BADADDR;
+			}
+			if (pheader->p_memsz + offset > size) {
+				LOG("mmap extra pages in memory\n");
+				addr = (void*) ((size_t) addr + size);
+				if (addr != mmap(addr, pheader->p_memsz + offset - size, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_ANONYMOUS| MAP_SHARED, -1, 0)) {
+					// LOG("failed to mmap 0x%lx to 0x%lx.\n", pheader->p_offset, pheader->p_vaddr + (size_t) base);
+					LOG("failed to mmap extra memory for pheader.\n");
+					print_hex(pheader->p_offset);
+					LOG(" to ");
+					print_hex(pheader->p_vaddr + (size_t) base);
+					LOG(".\n");
+					return BADADDR;
+				}
+			}
+			memset((void*) ((size_t) base + pheader->p_vaddr + pheader->p_filesz), 0, pheader->p_memsz - pheader->p_filesz);
+		}
+		{
+			LOG("testing memory...\n");
+			char c = *(unsigned char*) (pheader->p_vaddr + (size_t) base);
+			c = *(unsigned char*) (pheader->p_vaddr + (size_t) base + pheader->p_filesz - 1);
+			c = *(unsigned char*) (pheader->p_vaddr + (size_t) base + pheader->p_memsz - 1);
+			c++; // to avoid warning: c not used
+		}
+		// LOG("mmaped 0x%lx to 0x%lx, filesz 0x%lx, memsz 0x%lx\n", pheader->p_offset, pheader->p_vaddr + (size_t) base, pheader->p_filesz, pheader->p_memsz);
+		LOG("mmaped ");
+		print_hex(pheader->p_offset);
+		LOG(" to ");
+		print_hex(pheader->p_vaddr + (size_t) base);
+		LOG(", filesz ");
+		print_hex(pheader->p_filesz);
+		LOG(", memsz ");
+		print_hex(pheader->p_memsz);
+		LOG("\n");
+	}
+	LOG("mmap done\n");
+
+	if (dyn) {
+		LOG("DYNAMIC detected, loading...\n");
+		//if (!load_dynamic(base, dyn)) {
+		//	return BADADDR;
+		//}
+	} else {
+		LOG("No DYNAMIC, checking static symbols...\n");
+		//if (!load_static(base, buf, &header)) {
+		//	return BADADDR;
+		//}
+	}
+	LOG("done, loaded at ");
+	print_hex(base);
+	LOG("\n");
+	return base;
+}

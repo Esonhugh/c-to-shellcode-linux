@@ -8,5 +8,5 @@
 TEXT_SIZE=$(size -A -d payload.o|grep .text | awk '{print $2}') 
 FUNC_SIZE=$(size -A -d payload.o|grep .func | awk '{print $2}')
 
-BASE_REGISTER='$rax' # register could be change if payload shellcode function type are different
+BASE_REGISTER='$rdx' # register could be change if payload shellcode function type are different
 echo add-symbol-file ./payload.o -s .text $BASE_REGISTER -s .func $BASE_REGISTER+${TEXT_SIZE} -s .rodata.str1.1 $BASE_REGISTER+${TEXT_SIZE}+${FUNC_SIZE} -readnow

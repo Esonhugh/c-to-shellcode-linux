@@ -4,6 +4,10 @@
     "syscall.h": "c",
     "unistd.h": "c",
     "unistd_64.h": "c",
-    "stddef.h": "c"
+    "stddef.h": "c",
+    "common.h": "c",
+    "elf_struct.h": "c",
+    "syscalls.h": "c",
+    "typeinfo": "c"
   }
 }

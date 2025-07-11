@@ -1,3 +1,6 @@
+#ifndef COMMON_H
+#define COMMON_H
+
 #include "syscalls.h"
 
 #define FUNC __attribute__((section(".func")))
@@ -74,4 +77,18 @@ FUNC int print(const char *str) {
   return write(1, str, len);
 }
 
+FUNC int print_hex(void* ptr) {
+  char hex[18];
+  hex[0] = '0';
+  hex[1] = 'x';
+  const char* hex_chars = "0123456789abcdef";
+  unsigned long addr = (unsigned long)ptr;
+  for (int i = 17; i >= 2; i--) {
+    hex[i] = hex_chars[addr % 16];
+    addr /= 16;
+  }
+  return write(1, hex, 18);
+}
+
 #endif
+#endif // COMMON_H
