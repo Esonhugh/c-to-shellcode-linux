@@ -13,7 +13,6 @@ long get_shellcode_location(long self_header, long self_len) {
 ENTRY int start() {
   setuid(2);
   fake[0]= 'g';
-  open("/etc/passwd", O_RDONLY)
   print(fake);
   return 1;
 }
