@@ -5,8 +5,8 @@
 # Usage: source ./common/add-symbol-command.gdb
 # Ensure that the payload object file is named 'payload.o' and is in the current directory
 
-TEXT_SIZE=$(size -A -d payload.o|grep .text | awk '{print $2}') 
-FUNC_SIZE=$(size -A -d payload.o|grep .func | awk '{print $2}')
+ENTRY_SIZE=$(size -A -d payload.o|grep .entry | awk '{print $2}') 
+TEXT_SIZE=$(size -A -d payload.o|grep .text | awk '{print $2}')
 
-BASE_REGISTER='$rax' # register could be change if payload shellcode function type are different
-echo add-symbol-file ./payload.o -s .text $BASE_REGISTER -s .func $BASE_REGISTER+${TEXT_SIZE} -s .rodata.str1.1 $BASE_REGISTER+${TEXT_SIZE}+${FUNC_SIZE} -readnow
+BASE_REGISTER='$rdx' # register could be change if payload shellcode function type are different
+echo add-symbol-file ./payload.o -s .entry $BASE_REGISTER -s .text $BASE_REGISTER+${ENTRY_SIZE} -s .rodata.str1.1 $BASE_REGISTER+${ENTRY_SIZE}+${TEXT_SIZE} -readnow

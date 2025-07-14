@@ -1,9 +1,9 @@
+#ifndef _SHELLCODE_COMMON_H
+#define _SHELLCODE_COMMON_H
 #include "syscalls.h"
 
-#define FUNC __attribute__((section(".func")))
+#define ENTRY __attribute__((section(".entry")))
 #define INLINE __attribute__((always_inline)) inline
-#define CONST(type, name, init) \
-  FUNC type name() { return init; } 
 
 #define VAR(type, name, init) __volatile__ type name = init
 
@@ -27,7 +27,7 @@ typedef int bool;
 #define False 0
 
 #ifndef no_memset
-FUNC void* memset(void* b, int c, size_t len) {
+void* memset(void* b, int c, size_t len) {
     char* p = (char*)b;
     for (size_t i = 0; i != len; ++i) {
         p[i] = c;
@@ -35,7 +35,7 @@ FUNC void* memset(void* b, int c, size_t len) {
     return b;
 }
 
-FUNC void* memcpy(void* dest, const void* src, size_t len) {
+void* memcpy(void* dest, const void* src, size_t len) {
     char* d = (char*)dest;
     const char* s = (const char*)src;
     for (size_t i = 0; i != len; ++i) {
@@ -46,7 +46,7 @@ FUNC void* memcpy(void* dest, const void* src, size_t len) {
 #endif
 
 #ifndef no_get_rip
-FUNC long get_rip() {
+long get_rip() {
   void* location;
   __asm__ __volatile__(
       "mov %%rsp, %0;" // Move stack pointer to location
@@ -61,7 +61,7 @@ FUNC long get_rip() {
 
 #ifdef __PRINT
 
-FUNC int strlen(const char *str) {
+int strlen(const char *str) {
   int len = 0;
   while (str[len] != '\0') {
     len++;
@@ -69,9 +69,10 @@ FUNC int strlen(const char *str) {
   return len;
 }
 
-FUNC int print(const char *str) {
+int print(const char *str) {
   int len = strlen(str);
   return write(1, str, len);
 }
 
+#endif
 #endif

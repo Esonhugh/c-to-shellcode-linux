@@ -3,7 +3,7 @@ SECTIONS {
   . = BASE;
   .text : {
     . = BASE; 
+    *(.entry);
     *(.text);
-    *(.func);
   }
 }
