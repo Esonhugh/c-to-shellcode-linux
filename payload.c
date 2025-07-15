@@ -4,7 +4,7 @@
 
 static char *fake =  "Global variable\n";
 
-#define SELF_LENGTH 2033
+#define SELF_LENGTH 6756
 #define EXTRA_LENGTH 15112
 
 int start() {

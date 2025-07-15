@@ -3,6 +3,7 @@
 #include "../common/common.h"
 #define __X64
 #include "include/elf_struct.h"
+#include "./loadtype.c"
 
 #ifdef __PRINT
 #define LOG(str) print(str)
@@ -12,7 +13,8 @@
 
 #define BADADDR ((void *) -1)
 
-#define MMAP_LOAD_BASE ((void*) 0xc0000000)
+#define MMAP_LOAD_BASE ((void*) 0x0000000)
+
 
 FUNC int check_header(elf_header* header) {
 	if (*(uint*) header->e_ident != 0x464c457f) {
@@ -38,19 +40,8 @@ FUNC int check_header(elf_header* header) {
 	return 1;
 }
 
-FUNC int init_array_filter(void* base, void (*init_array_item)()) {
-	LOG("Executing init array item...\n");
-	return 1;
-}
 
-FUNC const elf_dyn* find_dyn_entry(const elf_dyn* dyn, int type) {
-	for (; dyn->d_tag != 0; dyn++) { // DT_NULL
-		if (dyn->d_tag == type) return dyn;
-	}
-	return NULL;
-}
-
-FUNC void* MY_DLOPEN(const char* buf, size_t size) {
+FUNC void* MY_DLOPEN(const char* buf, size_t buf_size) {
 	elf_header* header = (elf_header*)((void*)buf);
 	LOG("checking elf header...\n");
 	if (!check_header(header)) {
@@ -107,6 +98,7 @@ FUNC void* MY_DLOPEN(const char* buf, size_t size) {
 		base = MMAP_LOAD_BASE;
 		LOG("determine LOAD_BASE...\n");
 		// try to find a free address
+
 		while (base != mmap(base, 0x1000, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0)) {
 			base = (void*) ((size_t) base + 0x1000000);
 		}
@@ -117,6 +109,7 @@ FUNC void* MY_DLOPEN(const char* buf, size_t size) {
 	}
 	LOG("trying loading at ");
 	print_hex(base);
+	LOG("\n");
 
 	// lseek(fd, header.e_phoff, SEEK_SET);
 	for (int i = 0; i < e_phnum; i++) {
@@ -130,6 +123,7 @@ FUNC void* MY_DLOPEN(const char* buf, size_t size) {
 
 		if (pheader->p_type != 1 || pheader->p_memsz == 0) { // not PT_LOAD or nothing to load
 			if (pheader->p_type == 2) { // DYNAMIC
+				LOG("DYNAMIC PHT detected.\n");
 				if (dyn != NULL) {
 					LOG("duplicated DYNAMIC PHT detected.\n");
 					return BADADDR;
@@ -137,8 +131,19 @@ FUNC void* MY_DLOPEN(const char* buf, size_t size) {
 					dyn = (elf_dyn*) ((size_t) base + pheader->p_vaddr);
 				}
 			}
+			LOG("ptype ");
+			print_hex(pheader->p_type);
+			LOG(" memsz is ");
+			print_hex(pheader->p_memsz);
+			LOG(" skipping...\n");
 			continue;
 		}
+		LOG("[PT_LOAD] start loading ");
+		print_hex(pheader->p_offset);
+		LOG(" to ");
+		print_hex(pheader->p_vaddr + (size_t) base);
+		LOG(".\n");
+
 		void* addr = (void*) (((size_t) base + pheader->p_vaddr) & ~0xfff);
 		int offset = pheader->p_vaddr & 0xfff;
 		size_t size = (offset + pheader->p_filesz + 0xfff) & ~0xfff;
@@ -147,8 +152,18 @@ FUNC void* MY_DLOPEN(const char* buf, size_t size) {
 			print_hex(pheader->p_offset);
 			LOG(" to ");
 			print_hex(pheader->p_vaddr + (size_t)base);
+			LOG(" get ");
+			print_hex(addr);
 			LOG(".\n");
 			return BADADDR;
+		} else {
+			LOG("succeed to mmap pheader ");
+			print_hex(pheader->p_offset);
+			LOG(" to ");
+			print_hex(pheader->p_vaddr + (size_t) base);
+			LOG(" get ");
+			print_hex(addr);
+			LOG(".\n");
 		}
 		if (offset) {
 			memset(addr, 0, offset); // not exactly needed
@@ -160,7 +175,7 @@ FUNC void* MY_DLOPEN(const char* buf, size_t size) {
 			}
 			if (pheader->p_memsz + offset > size) {
 				LOG("mmap extra pages in memory\n");
-				addr = (void*) ((size_t) addr + size);
+				addr = (void*) (addr + size);
 				if (addr != mmap(addr, pheader->p_memsz + offset - size, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_ANONYMOUS| MAP_SHARED, -1, 0)) {
 					// LOG("failed to mmap 0x%lx to 0x%lx.\n", pheader->p_offset, pheader->p_vaddr + (size_t) base);
 					LOG("failed to mmap extra memory for pheader.\n");
@@ -169,6 +184,10 @@ FUNC void* MY_DLOPEN(const char* buf, size_t size) {
 					print_hex(pheader->p_vaddr + (size_t) base);
 					LOG(".\n");
 					return BADADDR;
+				} else {
+					LOG("succeed to mmap program memory ");
+					print_hex(addr);
+					LOG("\n");
 				}
 			}
 			memset((void*) ((size_t) base + pheader->p_vaddr + pheader->p_filesz), 0, pheader->p_memsz - pheader->p_filesz);
@@ -192,17 +211,26 @@ FUNC void* MY_DLOPEN(const char* buf, size_t size) {
 		LOG("\n");
 	}
 	LOG("mmap done\n");
+	int fd = open("/proc/self/maps", 00);
+	if (fd < 0) {
+		LOG("failed to open /proc/self/maps\n");
+		return BADADDR;
+	}
+	char file_buf [2048];
+	read(fd, file_buf, 2048);
+	write(1, file_buf, 2048);
+
 
 	if (dyn) {
 		LOG("DYNAMIC detected, loading...\n");
-		//if (!load_dynamic(base, dyn)) {
-		//	return BADADDR;
-		//}
+		if (!load_dynamic(base, dyn)) {
+			return BADADDR;
+		}
 	} else {
 		LOG("No DYNAMIC, checking static symbols...\n");
-		//if (!load_static(base, buf, &header)) {
-		//	return BADADDR;
-		//}
+		if (!load_static(base, buf, header)) {
+			return BADADDR;
+		}
 	}
 	LOG("done, loaded at ");
 	print_hex(base);

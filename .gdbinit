@@ -14,3 +14,5 @@ source ./common/add-symbol-command.gdb
 
 ## shellcode disassemble
 # disassemble
+b MY_DLOPEN
+b load_static

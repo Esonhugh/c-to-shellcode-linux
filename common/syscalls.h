@@ -117,8 +117,9 @@ __SYSCALL(1, int, close, SYS_close, int, fd);
 __SYSCALL(1, int, brk, SYS_brk, void *, addr);
 
 // void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
+// void *mmap (void *__addr, size_t __len, int __prot,int __flags, int __fd, __off_t __offset) 
 typedef long int off_t;
-__SYSCALL(6, void *, mmap, SYS_mmap, void *, addr, size_t, length, int, prot, int, flags, int, fd, off_t, offset);
+__SYSCALL(6, void *, mmap, SYS_mmap, void*, addr, size_t, length, int, prot, int, flags, int, fd, off_t, offset);
 // int munmap(void *addr, size_t length);
 __SYSCALL(2, int, munmap, SYS_munmap, void *, addr, size_t, length);
 

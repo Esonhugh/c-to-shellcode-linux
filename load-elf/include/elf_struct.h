@@ -25,6 +25,14 @@ typedef unsigned short ushort;
 typedef unsigned int uint;
 typedef unsigned long long ullong;
 
+typedef unsigned int __u32;
+typedef unsigned long long __u64;
+
+typedef __u32	Elf64_Word;
+typedef __u64	Elf64_Xword;
+typedef __u64	Elf64_Addr;
+typedef __u64	Elf64_Off;
+
 typedef struct {
 	uchar e_ident[16];
 	ushort e_type;
@@ -59,16 +67,16 @@ typedef struct {
 } elf_rela;
 
 typedef struct {
-	uint s_name;
-	uint s_type;
-	size_t s_flags;
-	size_t s_addr;
-	size_t s_offset;
-	size_t s_size;
-	uint s_link;
-	uint s_info;
-	size_t s_addralign;
-	size_t s_entsize;
+	  Elf64_Word s_name;
+    Elf64_Word s_type;
+    Elf64_Xword s_flags;
+    Elf64_Addr s_addr;
+    Elf64_Off s_offset;
+    Elf64_Xword s_size;
+    Elf64_Word s_link;
+    Elf64_Word s_info;
+    Elf64_Xword s_addralign;
+    Elf64_Xword s_entsize;
 } elf_section_header;
 
 // elf_sym.st_info
@@ -76,14 +84,6 @@ typedef struct {
 #define elf_st_type(info) ((info) & 0xf)
 
 #ifndef __32__ // 64 bit
-
-typedef unsigned int __u32;
-typedef unsigned long long __u64;
-
-typedef __u32	Elf64_Word;
-typedef __u64	Elf64_Xword;
-typedef __u64	Elf64_Addr;
-typedef __u64	Elf64_Off;
 
 typedef struct {
 	Elf64_Word p_type; // Elf64_Word
