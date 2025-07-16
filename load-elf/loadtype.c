@@ -15,6 +15,7 @@
 
 FUNC void *get_global_symbol(const char *symbol)
 {
+  LOG("ToDo: get global symbol function \n"); 
   return NULL;
 }
 

@@ -8,6 +8,8 @@
     "common.h": "c",
     "elf_struct.h": "c",
     "syscalls.h": "c",
-    "typeinfo": "c"
+    "typeinfo": "c",
+    "compare": "c",
+    "cstdint": "c"
   }
 }

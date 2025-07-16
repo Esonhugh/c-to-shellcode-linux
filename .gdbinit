@@ -5,7 +5,7 @@
 # print PAYLOAD
 # print *(void ()())(PAYLOAD)
 # break point at payload init point
-b *(&main+66)
+b *(&main+70)
 r
 # step into shellcode payload
 si
@@ -16,3 +16,4 @@ source ./common/add-symbol-command.gdb
 # disassemble
 b MY_DLOPEN
 b load_static
+b get_symbol_by_name

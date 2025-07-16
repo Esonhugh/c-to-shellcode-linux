@@ -72,8 +72,7 @@ FUNC void* MY_DLOPEN(const char* buf, size_t buf_size) {
 		//	close(fd);
 		//	return BADADDR;
 		// }
-		pheader = (elf_program_header*) ((size_t) buf + header-> e_phoff + i * sizeof(pheader));
-
+		pheader = (elf_program_header*) ((size_t) buf + header-> e_phoff + i * sizeof(elf_program_header));
 		if (pheader->p_type != 1 || pheader->p_memsz == 0) { // not PT_LOAD or nothing to load
 			LOG("not load or p_memsz is 0\n");
 			continue;
@@ -119,8 +118,7 @@ FUNC void* MY_DLOPEN(const char* buf, size_t buf_size) {
 		//	close(fd);
 		//	return BADADDR;
 		//}
-		pheader = (elf_program_header*) ((size_t) buf + header->e_phoff + i * sizeof(pheader));
-
+		pheader = (elf_program_header*) ((size_t) buf + header->e_phoff + i * sizeof(elf_program_header));
 		if (pheader->p_type != 1 || pheader->p_memsz == 0) { // not PT_LOAD or nothing to load
 			if (pheader->p_type == 2) { // DYNAMIC
 				LOG("DYNAMIC PHT detected.\n");
@@ -129,16 +127,24 @@ FUNC void* MY_DLOPEN(const char* buf, size_t buf_size) {
 					return BADADDR;
 				} else {
 					dyn = (elf_dyn*) ((size_t) base + pheader->p_vaddr);
+					LOG("DYN: ");
+					print_hex(dyn);
+					LOG("\n");
 				}
 			}
 			LOG("ptype ");
 			print_hex(pheader->p_type);
 			LOG(" memsz is ");
 			print_hex(pheader->p_memsz);
+			LOG(" vaddr is ");
+			print_hex(pheader->p_vaddr);
 			LOG(" skipping...\n");
 			continue;
-		}
-		LOG("[PT_LOAD] start loading ");
+		} 
+		// PT_LOAD
+		LOG("ptype ");
+		print_hex(pheader->p_type);
+		LOG("\n[PT_LOAD] start loading ");
 		print_hex(pheader->p_offset);
 		LOG(" to ");
 		print_hex(pheader->p_vaddr + (size_t) base);
@@ -149,9 +155,9 @@ FUNC void* MY_DLOPEN(const char* buf, size_t buf_size) {
 		size_t size = (offset + pheader->p_filesz + 0xfff) & ~0xfff;
 		if (addr != mmap(addr, size, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS, -1, pheader->p_offset - offset)) {
 			LOG("failed to mmap ");
-			print_hex(pheader->p_offset);
+			print_hex(pheader->p_offset); // 0x0000000000000000
 			LOG(" to ");
-			print_hex(pheader->p_vaddr + (size_t)base);
+			print_hex(pheader->p_vaddr + (size_t)base); // 0x0000000001000000
 			LOG(" get ");
 			print_hex(addr);
 			LOG(".\n");
@@ -164,6 +170,8 @@ FUNC void* MY_DLOPEN(const char* buf, size_t buf_size) {
 			LOG(" get ");
 			print_hex(addr);
 			LOG(".\n");
+			// try copy
+			memcpy(addr, buf + pheader->p_offset - offset, size);
 		}
 		if (offset) {
 			memset(addr, 0, offset); // not exactly needed
@@ -236,4 +244,50 @@ FUNC void* MY_DLOPEN(const char* buf, size_t buf_size) {
 	print_hex(base);
 	LOG("\n");
 	return base;
+}
+
+FUNC const elf_dyn* get_dyn(void* base) {
+	elf_header* header = (elf_header*) base;
+	int e_phnum = header->e_phnum;
+	elf_program_header* pheader = (elf_program_header*) ((size_t) base + header->e_phoff);
+	for (int i = 0; i < e_phnum; i++, pheader++) {
+		if (pheader->p_type == 2) {
+			return (elf_dyn*) ((size_t) base + pheader->p_vaddr);
+		}
+	}
+	return NULL;
+}
+
+FUNC void* get_symbol_by_name(void* base, const char* symbol) {
+	const elf_dyn* dyn = get_dyn(base);
+	const char* strtab = (const char*) (find_dyn_entry(dyn, 5)->d_un); // DT_STRTAB
+
+	if (strtab < (const char*) base)
+		strtab = (const char*) strtab + (size_t) base;
+	size_t strsz = find_dyn_entry(dyn, 0xa)->d_un; // DT_STRSZ
+	const elf_sym* symtab = (const elf_sym*) (find_dyn_entry(dyn, 6)->d_un); // DT_SYMTAB
+	if ((const char*) symtab < (const char*) base)
+		symtab = (const elf_sym*) ((const char*) symtab + (size_t) base);
+
+	for (; ; symtab++) {
+		if (symtab->st_name == 0) continue;
+		if (symtab->st_name >= strsz) {
+			// LOGE("failed to resolve symbol `%s' from library (%p): not found.\n", symbol, base);
+			return NULL;
+		}
+		if (strcmp(strtab + symtab->st_name, symbol) == 0) {
+			if (symtab->st_value == 0) {
+				// LOGE("failed to resolve symbol `%s' from library (%p): value is NULL.\n", symbol, base);
+				return NULL;
+			}
+			if (elf_st_type(symtab->st_info) != 10) { // STT_GNU_IFUNC
+				return (void*) ((size_t) base + symtab->st_value);
+			}
+			return ((void* (*)()) ((size_t) base + symtab->st_value))();
+		}
+	}
+}
+
+FUNC void* get_symbol_by_offset(void* base, size_t offset) {
+	return (void*) ((size_t) base + offset);
 }

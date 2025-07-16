@@ -26,10 +26,12 @@ typedef unsigned int uint;
 typedef unsigned long long ullong;
 
 typedef unsigned int __u32;
+typedef signed long __s64;
 typedef unsigned long long __u64;
 
 typedef __u32	Elf64_Word;
 typedef __u64	Elf64_Xword;
+typedef __s64	Elf64_Sxword;
 typedef __u64	Elf64_Addr;
 typedef __u64	Elf64_Off;
 
@@ -51,8 +53,10 @@ typedef struct {
 } elf_header;
 
 typedef struct {
-	size_t d_tag;
-	size_t d_un;
+	Elf64_Sxword d_tag;
+	// size_t d_tag;
+	Elf64_Addr d_un;
+	// size_t d_un;
 } elf_dyn;
 
 typedef struct {
