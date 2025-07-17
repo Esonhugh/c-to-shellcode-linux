@@ -2,6 +2,7 @@
 #include "../common/common.h"
 #include "include/elf_struct.h"
 
+
 #ifdef __PRINT
 #define LOG(str) print(str)
 #else
@@ -13,12 +14,6 @@
   } while (0)
 #endif
 
-FUNC void *get_global_symbol(const char *symbol)
-{
-  LOG("ToDo: get global symbol function \n"); 
-  return NULL;
-}
-
 FUNC const elf_dyn *find_dyn_entry(const elf_dyn *dyn, int type)
 {
   for (; dyn->d_tag != 0; dyn++)
@@ -28,6 +23,151 @@ FUNC const elf_dyn *find_dyn_entry(const elf_dyn *dyn, int type)
   }
   return NULL;
 }
+
+
+FUNC const elf_dyn* get_dyn(void* base) {
+	elf_header* header = (elf_header*) base;
+	int e_phnum = header->e_phnum;
+	elf_program_header* pheader = (elf_program_header*) ((size_t) base + header->e_phoff);
+	for (int i = 0; i < e_phnum; i++, pheader++) {
+		if (pheader->p_type == 2) {
+			return (elf_dyn*) ((size_t) base + pheader->p_vaddr);
+		}
+	}
+	return NULL;
+}
+
+
+typedef struct SymbolList {
+	struct SymbolList* next;
+	const char* symbol;
+	void* addr;
+} SymbolList;
+
+typedef struct LibraryList {
+	struct LibraryList* next;
+	const char* libname;
+	void* base;
+} LibraryList;
+
+static SymbolList symbol_header = { NULL, "", NULL };
+
+static LibraryList library_header = { NULL, "", NULL };
+
+static int registered_symbols = 0;
+
+
+FUNC void register_global_symbol(const char* symbol, void* target) {
+	LOG("register symbol: ");
+  LOG(symbol);
+  print_hex(target);
+  LOG("\n");
+
+	SymbolList* next = symbol_header.next;
+	SymbolList* last = &symbol_header;
+	while (next) {
+		int r = strcmp(symbol, next->symbol);
+		if (r > 0) {
+			last = next;
+			next = next->next;
+		} else if (r == 0) {
+            LOG("registered symbol ");
+            LOG(symbol);
+            LOG("(");
+            print_hex(next->addr);
+            LOG(") ");
+            print_hex(target);
+            LOG("\n");
+			// LOGW("registered symbol `%s' (%p) replaced with %p.\n", symbol, next->addr, target);
+			next->addr = target;
+			return;
+		} else {
+			break;
+		}
+	}
+	// next == NULL || strcmp(symbol, next->symbol) < 0
+  SymbolList* s = last++;
+  if (registered_symbols % 1024 == 0) {
+    SymbolList* s = (SymbolList*)mmap(0, sizeof(SymbolList)*1024,PROT_READ|PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  }
+	// SymbolList* s = (SymbolList*) malloc(sizeof(SymbolList));
+	s->symbol = symbol;
+	s->addr = target;
+	s->next = next;
+	last->next = s;
+  registered_symbols++;
+}
+
+FUNC void* find_registered_symbol(const char* symbol) {
+	SymbolList* iter = symbol_header.next;
+	while (iter) {
+		int r = strcmp(symbol, iter->symbol);
+		if (r == 0) {
+			return iter->addr;
+		} else if (r < 0) {
+			return NULL;
+		} else {
+			iter = iter->next;
+		}
+	}
+	return NULL;
+}
+
+
+
+FUNC void* get_symbol_by_name(void* base, const char* symbol) {
+	const elf_dyn* dyn = get_dyn(base);
+	const char* strtab = (const char*) (find_dyn_entry(dyn, 5)->d_un); // DT_STRTAB
+
+	if (strtab < (const char*) base)
+		strtab = (const char*) strtab + (size_t) base;
+	size_t strsz = find_dyn_entry(dyn, 0xa)->d_un; // DT_STRSZ
+	const elf_sym* symtab = (const elf_sym*) (find_dyn_entry(dyn, 6)->d_un); // DT_SYMTAB
+	if ((const char*) symtab < (const char*) base)
+		symtab = (const elf_sym*) ((const char*) symtab + (size_t) base);
+
+	for (; ; symtab++) {
+		if (symtab->st_name == 0) continue;
+		if (symtab->st_name >= strsz) {
+			// LOGE("failed to resolve symbol `%s' from library (%p): not found.\n", symbol, base);
+			return NULL;
+		}
+		if (strcmp(strtab + symtab->st_name, symbol) == 0) {
+			if (symtab->st_value == 0) {
+				// LOGE("failed to resolve symbol `%s' from library (%p): value is NULL.\n", symbol, base);
+				return NULL;
+			}
+			if (elf_st_type(symtab->st_info) != 10) { // STT_GNU_IFUNC
+				return (void*) ((size_t) base + symtab->st_value);
+			}
+			return ((void* (*)()) ((size_t) base + symtab->st_value))();
+		}
+	}
+}
+
+
+FUNC void* get_global_symbol(const char* symbol) {
+	void* addr = find_registered_symbol(symbol);
+	if (addr) {
+		return addr;
+	}
+	addr = NULL;
+	LibraryList* iter = library_header.next;
+	while (iter) {
+		addr = get_symbol_by_name(iter->base, symbol);
+		if (addr) {
+			return addr;
+		}
+		iter = iter->next;
+	}
+	return NULL;
+}
+
+
+FUNC void* get_symbol_by_offset(void* base, size_t offset) {
+	return (void*) ((size_t) base + offset);
+}
+
 
 FUNC int filter(void *base, void (*init_array_item)())
 {
