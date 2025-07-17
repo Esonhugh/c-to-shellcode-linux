@@ -266,7 +266,7 @@ FUNC int do_reloc(void *base, size_t offset, size_t info, size_t addend, const e
       const void *sym_value = get_global_symbol(name);
       if (!sym_value)
       {
-        LOG("failed to resolve symbol");
+        LOG("failed to resolve symbol ");
         LOG(name);
         LOG(".\n");
         break;
@@ -333,7 +333,9 @@ FUNC int do_reloc(void *base, size_t offset, size_t info, size_t addend, const e
     break;
   default:
     // LOGW("unimplemented reloc type: %d.\n", type);
-    LOG("unimplemented reloc type!");
+    LOG("unimplemented reloc type! type: ");
+    print_hex(type);
+    LOG("\n");
     break;
   }
 #undef sym
